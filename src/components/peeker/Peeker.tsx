@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType, type CSSProperties, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ComponentType, type ReactElement } from 'react'
 import { animate, useReducedMotion } from 'framer-motion'
 
 /**
@@ -14,12 +14,12 @@ import { animate, useReducedMotion } from 'framer-motion'
  *   <PeekerStage critters={[clawd, codex]} viewportTop={64} />
  *
  * What they do:
- * - Peek: slide out from behind an edge of their hideout, look around, creep
- *   along the edge, then duck back. Sprites with `hands` climb instead: hands
- *   grab the edge first, then they pull themselves up.
- * - Chase the scroll: when their hideout scrolls away they climb out and run
- *   along; when scrolling stops they hop to the nearest visible hideout and dive
- *   behind it.
+ * - Peek: slide out from behind an edge of a hideout, look around, sometimes
+ *   creep along the edge or climb out further, then duck back. Sprites with
+ *   `hands` climb instead: hands grab the edge first, then they pull up.
+ * - Follow the reader: they only ever appear on hideouts that are on screen.
+ *   Between peeks they may slip over to another visible hideout, and when the
+ *   page is scrolled they move (unseen) to hideouts in view and peek soon after.
  * - Slap: clicking a link or button (see `slapSelector`) makes the nearest free
  *   critter pop out from behind it and slap it.
  * - Hide fast when the cursor comes close (or on tap). Reduced-motion visitors
@@ -87,6 +87,8 @@ export interface PeekerStageProps {
   viewportTop?: number
   /** Random wait between peeks, in ms. */
   delay?: [min: number, max: number]
+  /** Chance (0-1) of slipping over to another visible hideout between peeks. */
+  wander?: number
   /** Cursor distance (px) that scares a peeking critter back into hiding. */
   shyRadius?: number
   zIndex?: number
@@ -95,24 +97,18 @@ export interface PeekerStageProps {
 // ---------- geometry ----------
 
 type Pt = { x: number; y: number; rot: number }
-type Spot = { kind: 'spot'; el: Element; edge: Edge; pos: number }
-type Place = Spot | { kind: 'free'; x: number; y: number }
-// `clip` keeps the critter clipped at the hideout edge while moving (creeping along it).
-type Travel = { from: Place | Pt; to: Place; start: number; dur: number; hop: number; clip: boolean; done: () => void }
+type Spot = { el: Element; edge: Edge; pos: number }
+type Creep = { from: Spot; to: Spot; start: number; dur: number; done: () => void }
 
 const rand = (min: number, max: number) => min + Math.random() * (max - min)
 const pick = <T,>(items: T[]) => items[Math.floor(Math.random() * items.length)]
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
-const lerpAngle = (a: number, b: number, t: number) => a + ((((b - a + 540) % 360) + 360) % 360 - 180) * t
 
-function pointOf(p: Place | Pt): Pt {
-  if (!('kind' in p)) return p
-  if (p.kind === 'free') return { x: p.x, y: p.y, rot: 0 }
-  const r = p.el.getBoundingClientRect()
-  const f = p.pos / 100
-  switch (p.edge) {
+function pointOf({ el, edge, pos }: Spot): Pt {
+  const r = el.getBoundingClientRect()
+  const f = pos / 100
+  switch (edge) {
     case 'top':
       return { x: r.left + f * r.width, y: r.top, rot: 0 }
     case 'bottom':
@@ -129,6 +125,7 @@ function pointOf(p: Place | Pt): Pt {
 const toLocal = (edge: Edge, dir: number) => ((edge === 'bottom' || edge === 'left' ? -dir : dir) as Look)
 
 function visibleFraction(el: Element, top: number) {
+  if (!el.isConnected) return 0
   const r = el.getBoundingClientRect()
   const h = Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, top))
   const w = Math.max(0, Math.min(r.right, innerWidth) - Math.max(r.left, 0))
@@ -154,7 +151,7 @@ function edgeFits(el: Element, edge: Edge, span: number, out: number, top: numbe
 
 // ---------- stage ----------
 
-type StageEvent = { type: 'scroll'; dir: 1 | -1 } | { type: 'scrollend' }
+type StageEvent = 'scroll' | 'scrollend'
 interface CritterApi {
   point(): Pt
   busy(): boolean
@@ -164,8 +161,8 @@ interface CritterApi {
 interface Stage {
   opts: Required<Omit<PeekerStageProps, 'critters'>>
   reduceMotion: boolean
-  /** Which hideout edge each critter is using, so they don't pile up. */
-  claims: Map<symbol, { el: Element; edge: Edge }>
+  /** Where each critter is currently peeking, so they don't pile up on one spot. */
+  claims: Map<symbol, Spot>
   listeners: Set<(e: StageEvent) => void>
   critters: Map<symbol, CritterApi>
 }
@@ -177,32 +174,30 @@ export default function PeekerStage({
   slapSelector = 'a, button, [data-peeker-slap]',
   holdLinks = true,
   viewportTop = 0,
-  delay = [1500, 4500],
+  delay = [900, 2600],
+  wander = 0.4,
   shyRadius = 110,
   zIndex = 60,
 }: PeekerStageProps) {
   const reduceMotion = !!useReducedMotion()
   // Created once; options are fixed for the stage's lifetime.
   const [stage] = useState<Stage>(() => ({
-    opts: { hideoutSelector, homeSelector, slapSelector, holdLinks, viewportTop, delay, shyRadius, zIndex },
+    opts: { hideoutSelector, homeSelector, slapSelector, holdLinks, viewportTop, delay, wander, shyRadius, zIndex },
     reduceMotion,
     claims: new Map(),
     listeners: new Set(),
     critters: new Map(),
   }))
 
-  // Scroll → 'scroll' events while moving, 'scrollend' once it settles.
+  // Scroll → 'scroll' while moving, 'scrollend' once it settles.
   useEffect(() => {
     if (reduceMotion) return
-    let lastY = scrollY
     let timer: ReturnType<typeof setTimeout>
     const emit = (e: StageEvent) => stage.listeners.forEach((l) => l(e))
     const onScroll = () => {
-      const dir = scrollY >= lastY ? 1 : -1
-      lastY = scrollY
-      emit({ type: 'scroll', dir })
+      emit('scroll')
       clearTimeout(timer)
-      timer = setTimeout(() => emit({ type: 'scrollend' }), 220)
+      timer = setTimeout(() => emit('scrollend'), 200)
     }
     addEventListener('scroll', onScroll, { passive: true })
     return () => {
@@ -246,7 +241,11 @@ export default function PeekerStage({
   }, [reduceMotion, stage])
 
   return (
-    <div aria-hidden="true" style={{ position: 'fixed', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex }}>
+    <div
+      aria-hidden="true"
+      // Nothing is ever drawn over a fixed header (`viewportTop`).
+      style={{ position: 'fixed', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex, clipPath: `inset(${viewportTop}px 0 0 0)` }}
+    >
       {critters.map((sprite, i) => (
         <Critter key={i} index={i} sprite={sprite} stage={stage} />
       ))}
@@ -260,32 +259,30 @@ const SLAP_DEPTH = 8 // px a hand may reach past the edge when slapping
 
 function Critter({ sprite, stage, index }: { sprite: PeekerSprite; stage: Stage; index: number }) {
   const { width: W, height: H, Body, hands } = sprite
-  const { delay, viewportTop: top, shyRadius } = stage.opts
+  const { delay, wander, viewportTop: top, shyRadius } = stage.opts
   const reach = hands?.reach ?? 16
   // Local y offsets: positive = further behind the edge.
   const BODY_HIDDEN = H + 2
   const BODY_PEEK = H - sprite.peek
   const BODY_CURIOUS = H - sprite.curious
   const HANDS_HIDDEN = hands ? hands.height + SLAP_DEPTH + 2 : 0
+  const HANDS_LIFTED = hands ? -(hands.grip + 4) : 0 // fingers just clear of the edge
   const slapX = sprite.slapX ?? W / 2 - 8
   const span = (hands?.width ?? W) * 1.6 // edge length it needs to peek comfortably
 
   const anchorRef = useRef<HTMLDivElement>(null)
-  const bodyClipRef = useRef<HTMLDivElement>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const handsClipRef = useRef<HTMLDivElement>(null)
   const handsRef = useRef<HTMLDivElement>(null)
 
   const [id] = useState(() => Symbol('critter'))
-  const place = useRef<Place | null>(null)
-  const travel = useRef<Travel | null>(null)
+  const spot = useRef<Spot | null>(null)
+  const creep = useRef<Creep | null>(null)
   const lastPt = useRef<Pt>({ x: -100, y: -100, rot: 0 })
   const gen = useRef(0) // bumping it cancels the running routine
   const mounted = useRef(false)
   const peeking = useRef(false) // visible at a hideout, so it's shy
   const busy = useRef(false) // slapping
-  const mode = useRef<'chase' | 'settle' | null>(null) // following the scroll
-  const chaseDir = useRef<1 | -1>(1)
 
   const [look, setLook] = useState<Look>(0)
   const [blink, setBlink] = useState(false)
@@ -301,88 +298,126 @@ function Critter({ sprite, stage, index }: { sprite: PeekerSprite; stage: Stage;
   const handsTo = (y: number, duration: number, ease: 'easeIn' | 'easeOut' = 'easeOut') =>
     handsRef.current ? animate(handsRef.current, { y }, { duration, ease }) : Promise.resolve()
 
-  const claim = (el: Element, edge: Edge) => stage.claims.set(id, { el, edge })
-  const release = () => stage.claims.delete(id)
-  const takenByOther = (el: Element, edge?: Edge) =>
-    [...stage.claims].some(([k, c]) => k !== id && c.el === el && (!edge || c.edge === edge))
-
-  /** Move the anchor to `to` over `dur` s (hopping `hop` px), tracking both ends live. */
-  function travelTo(to: Place, { from, dur, hop, clip = false }: { from?: Place | Pt; dur: number; hop: number; clip?: boolean }) {
-    return new Promise<void>((resolve) => {
-      travel.current?.done()
-      travel.current = { from: from ?? lastPt.current, to, start: performance.now(), dur: dur * 1000, hop, clip, done: resolve }
-      place.current = to
-    })
+  // The hands' clip box has two modes: 'grip' lets the fingers overlap the
+  // element's face (curled over the edge); 'behind' cuts them off exactly at
+  // the edge, so they can come up from, and drop back behind, the element.
+  function handsClip(mode: 'grip' | 'behind') {
+    if (!hands || !handsClipRef.current) return
+    const h = hands.height + reach + (mode === 'grip' ? SLAP_DEPTH : -hands.grip)
+    handsClipRef.current.style.height = `${h}px`
   }
-  function jumpTo(to: Place) {
-    travel.current?.done()
-    travel.current = null
-    place.current = to
+  /** Reach up from behind the edge, then clamp down onto it. */
+  async function grab(speed = 1) {
+    if (!hands) return
+    handsClip('behind')
+    await handsTo(HANDS_LIFTED, 0.25 * speed)
+    handsClip('grip')
+    await handsTo(0, 0.1 * speed, 'easeIn')
+  }
+  /** Lift the fingers off the edge, then drop back behind it. */
+  async function letGo(speed = 1) {
+    if (!hands) return
+    await handsTo(HANDS_LIFTED, 0.14 * speed)
+    handsClip('behind')
+    await handsTo(HANDS_HIDDEN, 0.22 * speed, 'easeIn')
+  }
+
+  const claim = (s: Spot) => stage.claims.set(id, s)
+  const release = () => stage.claims.delete(id)
+  /** Another critter is peeking at this element (and, if given, too close to this spot on this edge). */
+  const takenByOther = (el: Element, edge?: Edge, pos?: number) =>
+    [...stage.claims].some(([k, c]) => {
+      if (k === id || c.el !== el) return false
+      if (!edge) return true
+      if (c.edge !== edge) return false
+      if (pos === undefined) return true
+      const r = el.getBoundingClientRect()
+      const len = edge === 'top' || edge === 'bottom' ? r.width : r.height
+      return (Math.abs(c.pos - pos) / 100) * len < (hands?.width ?? W) * 1.4
+    })
+  /** A spot on `el` no other critter is peeking near, or null. */
+  function freeSpot(el: Element): Spot | null {
+    for (let i = 0; i < 6; i++) {
+      const edge = pick(fittingEdges(el))
+      if (!edge) return null
+      const pos = rand(18, 82)
+      if (!takenByOther(el, edge, pos)) return { el, edge, pos }
+    }
+    return null
+  }
+
+  /** Move instantly (only ever done while hidden). */
+  function jumpTo(to: Spot) {
+    creep.current?.done()
+    creep.current = null
+    spot.current = to
+  }
+  /** Creep along the current edge to `to.pos`. */
+  function creepTo(to: Spot, dur: number) {
+    return new Promise<void>((resolve) => {
+      creep.current?.done()
+      creep.current = { from: spot.current ?? to, to, start: performance.now(), dur: dur * 1000, done: resolve }
+      spot.current = to
+    })
   }
 
   const alive = (g: number) => mounted.current && g === gen.current
-  /** Cancel whatever is running and start `routine`, then go back to idling. */
-  function run(routine: (g: number) => Promise<unknown>) {
+  /** Cancel whatever is running, run `routine`, then go back to idling (first peek after `nextWait` ms). */
+  function run(routine: (g: number) => Promise<unknown>, nextWait?: number) {
     const g = ++gen.current
     routine(g).then(() => {
-      if (alive(g)) idle(g)
+      if (alive(g)) idle(g, nextWait)
     })
   }
 
   // ----- choosing places -----
 
-  function pickEdge(el: Element): Edge | null {
-    const wide = innerWidth >= 1024
-    const edges: Edge[] = wide ? ['top', 'top', 'bottom', 'left', 'right'] : ['top', 'top', 'bottom']
-    const ok = edges.filter((e) => !takenByOther(el, e) && edgeFits(el, e, span, sprite.curious, top))
-    return ok.length ? pick(ok) : null
+  const fittingEdges = (el: Element) => {
+    const edges: Edge[] = innerWidth >= 1024 ? ['top', 'top', 'bottom', 'left', 'right'] : ['top', 'top', 'bottom']
+    return edges.filter((e) => edgeFits(el, e, span, sprite.curious, top))
   }
+  const onScreen = (el: Element) => visibleFraction(el, top) >= 0.5
 
-  /** Nearest mostly-visible hideout with a free top/bottom edge. */
-  function pickHideout(from: Pt): Spot | null {
-    let best: Spot | null = null
-    let bestScore = Infinity
-    for (const el of document.querySelectorAll(stage.opts.hideoutSelector)) {
-      if (visibleFraction(el, top) < 0.5) continue
-      for (const edge of ['top', 'bottom'] as Edge[]) {
-        if (takenByOther(el, edge) || !edgeFits(el, edge, span, H, top)) continue
-        const spot: Spot = { kind: 'spot', el, edge, pos: rand(25, 75) }
-        const p = pointOf(spot)
-        const score = Math.hypot(p.x - from.x, p.y - from.y) + (takenByOther(el) ? 400 : 0) + (edge === 'bottom' ? 150 : 0)
-        if (score < bestScore) [best, bestScore] = [spot, score]
-      }
-    }
-    return best
+  /** A random on-screen hideout it fits on, preferring ones no other critter is peeking at. */
+  function pickHideout(exclude?: Element | null): Element | null {
+    const els = [...document.querySelectorAll(stage.opts.hideoutSelector)].filter(
+      (el) => el !== exclude && onScreen(el) && fittingEdges(el).length > 0,
+    )
+    const alone = els.filter((el) => !takenByOther(el))
+    return (alone.length ? pick(alone) : pick(els)) ?? null
   }
 
   // ----- routines -----
 
-  async function idle(g: number) {
+  async function idle(g: number, firstWait?: number) {
+    let wait = firstWait
     while (alive(g)) {
       setWalking(false)
-      await sleep(rand(delay[0], delay[1]))
+      await sleep(wait ?? rand(delay[0], delay[1]))
+      wait = undefined
       if (!alive(g)) return
-      const p = place.current
-      if (!p || p.kind === 'free') {
-        await settle(g) // lost outside a hideout: find one
-        continue
-      }
-      const edge = pickEdge(p.el)
-      if (!edge) continue
-      let spot: Spot = { kind: 'spot', el: p.el, edge, pos: rand(18, 82) }
-      claim(p.el, edge)
-      jumpTo(spot) // it's hidden, so it can move freely behind the element
+
+      // Stay with the reader: move (unseen) to another on-screen hideout when
+      // this one has scrolled away, and now and then just for variety.
+      let el = spot.current?.el ?? null
+      if (!el || !onScreen(el) || Math.random() < wander) el = pickHideout(el) ?? (el && onScreen(el) ? el : null)
+      if (!el) continue
+      let here = freeSpot(el)
+      if (!here) continue
+      const { edge } = here
+      claim(here)
+      jumpTo(here)
       setLook(0)
       peeking.current = true
 
       if (hands) {
-        await handsTo(0, 0.35) // grab the edge…
+        await grab() // grab the edge…
         if (!alive(g)) return
         await sleep(rand(400, 900)) // …hang for a moment…
         if (!alive(g)) return
         await bodyTo(BODY_PEEK, 0.55, [0.3, 1.4, 0.6, 1]) // …and pull up
       } else {
-        await bodyTo(BODY_PEEK, 0.45)
+        await bodyTo(BODY_PEEK, 0.45, [0.3, 1.3, 0.6, 1])
       }
       if (!alive(g)) return
 
@@ -392,14 +427,15 @@ function Critter({ sprite, stage, index }: { sprite: PeekerSprite; stage: Stage;
       }
       if (!alive(g)) return
 
-      // Sometimes creep (or shimmy hand over hand) along the edge.
-      if (Math.random() < 0.5) {
-        const next: Spot = { ...spot, pos: rand(18, 82) }
-        setLook(toLocal(edge, next.pos > spot.pos ? 1 : -1))
+      // Sometimes creep along the edge (unless another critter is in the way).
+      const next: Spot = { ...here, pos: rand(18, 82) }
+      if (Math.random() < 0.45 && !takenByOther(el, edge, next.pos)) {
+        setLook(toLocal(edge, next.pos > here.pos ? 1 : -1))
         setWalking(true)
-        await travelTo(next, { from: spot, dur: Math.abs(next.pos - spot.pos) * (hands ? 0.07 : 0.05), hop: 0, clip: true })
+        claim(next)
+        await creepTo(next, Math.abs(next.pos - here.pos) * (hands ? 0.07 : 0.05))
         setWalking(false)
-        spot = next
+        here = next
         if (!alive(g)) return
       }
 
@@ -412,101 +448,51 @@ function Critter({ sprite, stage, index }: { sprite: PeekerSprite; stage: Stage;
 
       await bodyTo(BODY_HIDDEN, hands ? 0.22 : 0.3, 'easeIn')
       if (hands && alive(g)) {
-        await sleep(rand(150, 400))
-        await handsTo(HANDS_HIDDEN, 0.2, 'easeIn')
+        await sleep(rand(150, 400)) // hang on for a moment…
+        await letGo() // …then let go
       }
       peeking.current = false
+      release()
     }
   }
 
-  function chaseSpot(): Place {
-    const cur = lastPt.current
-    const y = chaseDir.current > 0 ? innerHeight * 0.8 : Math.max(innerHeight * 0.3, top + H + 24)
-    return { kind: 'free', x: clamp(cur.x, W, innerWidth - W), y }
-  }
-
-  /** Climb fully out of the current hideout (still clipped, so it visibly comes out from behind it). */
-  async function emerge() {
+  /** Duck out of sight quickly (e.g. the page scrolled its hideout away). */
+  async function duck() {
     peeking.current = false
-    setLook(0)
-    if (place.current?.kind !== 'spot') return
-    release()
-    void handsTo(0, 0.15)
-    await bodyTo(0, 0.2)
-  }
-
-  /** Climb out of the hideout and run along with the scroll. */
-  async function chase(g: number) {
-    mode.current = 'chase'
-    await emerge()
-    if (!alive(g)) return
-    setWalking(true)
-    await travelTo(chaseSpot(), { dur: 0.45, hop: 30 })
-  }
-
-  /** Hop to the nearest visible hideout and dive behind it. */
-  async function settle(g: number) {
-    mode.current = 'settle'
-    await emerge()
-    if (!alive(g)) return
-    const from = lastPt.current
-    const target = pickHideout(from)
-    if (!target) {
-      setWalking(false)
-      mode.current = null
-      return
-    }
-    claim(target.el, target.edge)
-    setWalking(true)
-    const to = pointOf(target)
-    const dist = Math.hypot(to.x - from.x, to.y - from.y)
-    await travelTo(target, { dur: clamp(dist / 900, 0.35, 1.1), hop: clamp(dist * 0.25, 30, 120) })
-    if (!alive(g)) return
     setWalking(false)
-    await sleep(120)
-    if (!alive(g)) return
-    void handsTo(HANDS_HIDDEN, 0.2, 'easeIn')
-    await bodyTo(BODY_HIDDEN, 0.25, 'easeIn')
-    mode.current = null
+    await bodyTo(BODY_HIDDEN, 0.16, 'easeIn')
+    await letGo(0.6)
+    release()
   }
 
   function scare() {
-    if (!peeking.current || busy.current || mode.current) return
+    if (!peeking.current || busy.current) return
     peeking.current = false
     run(async () => {
       setStartled(true)
       setWalking(false)
       setTimeout(() => setStartled(false), 400)
       await bodyTo(BODY_HIDDEN, 0.14, 'easeIn')
-      await handsTo(HANDS_HIDDEN, 0.12, 'easeIn')
-      await sleep(rand(delay[0] * 1.5, delay[1]))
-    })
+      await letGo(0.6)
+      release()
+    }, rand(delay[0] * 1.5, delay[1] * 1.5))
   }
 
   function slapIt(el: Element, onHit?: () => void) {
     if (busy.current) return
     run(async (g) => {
       busy.current = true
-      mode.current = null
       peeking.current = false
       release()
       try {
         const r = el.getBoundingClientRect()
         // Pop out above the element, or below it when there's no room above.
         const edge: Edge = r.top - (H + 8) >= 0 ? 'top' : 'bottom'
-        const spot: Spot = { kind: 'spot', el, edge, pos: rand(30, 70) }
-        if (place.current?.kind === 'free') {
-          // Already out in the open: run over and land on it.
-          setWalking(true)
-          await travelTo(spot, { dur: 0.35, hop: 40 })
-          setWalking(false)
-        } else {
-          // Duck out of sight, then come out from behind the element.
-          await Promise.all([bodyTo(BODY_HIDDEN, 0.1, 'easeIn'), handsTo(HANDS_HIDDEN, 0.1, 'easeIn')])
-          jumpTo(spot)
-          if (hands) await handsTo(0, 0.12)
-          await bodyTo(BODY_CURIOUS, 0.16)
-        }
+        // Duck out of sight, then come out from behind the element.
+        await Promise.all([bodyTo(BODY_HIDDEN, 0.1, 'easeIn'), letGo(0.5)])
+        jumpTo({ el, edge, pos: rand(30, 70) })
+        await grab(0.5)
+        await bodyTo(BODY_CURIOUS, 0.16)
         if (!alive(g)) return
         setLook(0)
         const hits = Math.random() < 0.35 ? 2 : 1
@@ -522,19 +508,16 @@ function Critter({ sprite, stage, index }: { sprite: PeekerSprite; stage: Stage;
         }
         await sleep(200)
         await bodyTo(BODY_HIDDEN, 0.18, 'easeIn')
-        await handsTo(HANDS_HIDDEN, 0.12, 'easeIn')
+        await letGo(0.6)
         // Slip back to a hideout while out of sight.
-        const home = pickHideout(lastPt.current)
-        if (home) {
-          claim(home.el, home.edge)
-          jumpTo(home)
-        }
+        const home = pickHideout()
+        if (home) jumpTo({ el: home, edge: 'top', pos: 50 })
       } finally {
         busy.current = false
         setSlap(null)
         onHit?.() // no-op if it already ran; guarantees held links still open
       }
-    })
+    }, rand(400, 1000))
   }
 
   // ----- effects -----
@@ -542,36 +525,28 @@ function Critter({ sprite, stage, index }: { sprite: PeekerSprite; stage: Stage;
   // Position the anchor every frame (hideouts move as the page scrolls).
   useEffect(() => {
     let raf = 0
-    let clipped: boolean | null = null
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick)
       const a = anchorRef.current
-      const p = place.current
-      if (!a || !p) return
-      if (p.kind === 'spot' && !p.el.isConnected) place.current = { kind: 'free', x: lastPt.current.x, y: lastPt.current.y }
+      const s = spot.current
+      if (!a || !s) return
       let pt: Pt
-      const tr = travel.current
-      if (tr) {
-        const t = Math.min(1, (now - tr.start) / tr.dur)
+      const c = creep.current
+      if (c) {
+        const t = Math.min(1, (now - c.start) / c.dur)
         const e = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2
-        const f = pointOf(tr.from)
-        const to = pointOf(tr.to)
-        pt = { x: lerp(f.x, to.x, e), y: lerp(f.y, to.y, e) - tr.hop * 4 * t * (1 - t), rot: lerpAngle(f.rot, to.rot, e) }
+        const f = pointOf(c.from)
+        const to = pointOf(c.to)
+        pt = { x: lerp(f.x, to.x, e), y: lerp(f.y, to.y, e), rot: to.rot }
         if (t >= 1) {
-          travel.current = null
-          tr.done()
+          creep.current = null
+          c.done()
         }
       } else {
-        pt = pointOf(place.current!)
+        pt = pointOf(s)
       }
       lastPt.current = pt
       a.style.transform = `translate(${pt.x}px, ${pt.y}px) rotate(${pt.rot}deg)`
-      // Clip at the edge line only while sitting at a hideout.
-      const clip = place.current!.kind === 'spot' && (!travel.current || travel.current.clip)
-      if (clip !== clipped) {
-        clipped = clip
-        for (const el of [bodyClipRef.current, handsClipRef.current]) if (el) el.style.overflow = clip ? 'hidden' : 'visible'
-      }
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
@@ -584,16 +559,15 @@ function Critter({ sprite, stage, index }: { sprite: PeekerSprite; stage: Stage;
     if (home) {
       if (stage.reduceMotion) {
         // Sit still, peeking, side by side on the home hideout.
-        jumpTo({ kind: 'spot', el: home, edge: 'top', pos: index % 2 ? 28 : 72 })
+        jumpTo({ el: home, edge: 'top', pos: index % 2 ? 28 : 72 })
         animate(bodyRef.current!, { y: BODY_PEEK }, { duration: 0 })
         if (handsRef.current) animate(handsRef.current, { y: 0 }, { duration: 0 })
       } else {
-        const edge: Edge = takenByOther(home, 'top') ? 'bottom' : 'top'
-        claim(home, edge)
-        jumpTo({ kind: 'spot', el: home, edge, pos: 50 })
+        jumpTo({ el: home, edge: 'top', pos: 50 })
         animate(bodyRef.current!, { y: BODY_HIDDEN }, { duration: 0 })
         if (handsRef.current) animate(handsRef.current, { y: HANDS_HIDDEN }, { duration: 0 })
-        run(async () => sleep(index * 1200)) // stagger their first peeks
+        handsClip('behind')
+        run(async () => {}, 500 + index * 900) // stagger their first peeks
       }
     }
 
@@ -601,18 +575,15 @@ function Critter({ sprite, stage, index }: { sprite: PeekerSprite; stage: Stage;
     stage.critters.set(id, api)
     const onEvent = (e: StageEvent) => {
       if (busy.current) return
-      const p = place.current
-      const homeInView = p?.kind === 'spot' && visibleFraction(p.el, top) >= 0.35
-      if (e.type === 'scroll') {
-        const turned = e.dir !== chaseDir.current
-        chaseDir.current = e.dir
-        if (mode.current === 'chase') {
-          if (turned) void travelTo(chaseSpot(), { dur: 0.5, hop: 20 })
-        } else if (mode.current === 'settle' || !homeInView) {
-          run(chase) // scrolling again mid-dive, or its hideout is leaving
-        }
-      } else if (mode.current === 'chase' || (!mode.current && !homeInView)) {
-        run(settle) // scrolling stopped: find a hideout on screen
+      const el = spot.current?.el
+      if (e === 'scroll') {
+        // Its spot is scrolling away (or under the header): duck, and come back once scrolling stops.
+        const p = lastPt.current
+        const away = !el || visibleFraction(el, top) < 0.6 || p.y < top || p.y > innerHeight
+        if (peeking.current && away) run(duck, 60_000)
+      } else if (!peeking.current) {
+        // Scrolling stopped: show up on something in view soon.
+        run(async () => {}, rand(250, 900))
       }
     }
     if (!stage.reduceMotion) stage.listeners.add(onEvent)
@@ -679,12 +650,11 @@ function Critter({ sprite, stage, index }: { sprite: PeekerSprite; stage: Stage;
   // ----- render -----
 
   const state: SpriteState = { look, blink, startled, walking, step, slap }
-  const box = (s: CSSProperties): CSSProperties => ({ position: 'absolute', overflow: 'hidden', ...s })
 
   return (
     <div ref={anchorRef} style={{ position: 'absolute', left: 0, top: 0, width: 0, height: 0, willChange: 'transform' }}>
       {/* Body: clip box ends exactly at the edge line. */}
-      <div ref={bodyClipRef} style={box({ left: -W, top: -(H + 48), width: W * 2, height: H + 48 })}>
+      <div style={{ position: 'absolute', overflow: 'hidden', left: -W, top: -(H + 48), width: W * 2, height: H + 48 }}>
         <div
           ref={bodyRef}
           style={{ position: 'absolute', left: W / 2, bottom: 0, width: W, height: H, transform: `translateY(${BODY_HIDDEN}px)` }}
@@ -697,12 +667,14 @@ function Critter({ sprite, stage, index }: { sprite: PeekerSprite; stage: Stage;
       {hands && (
         <div
           ref={handsClipRef}
-          style={box({
+          style={{
+            position: 'absolute',
+            overflow: 'hidden',
             left: -hands.width / 2,
             top: hands.grip - hands.height - reach,
             width: hands.width,
             height: hands.height + reach + SLAP_DEPTH,
-          })}
+          }}
         >
           <div
             ref={handsRef}
@@ -796,4 +768,29 @@ export function PixelArt({
     }
   })
   return <g>{rects}</g>
+}
+
+/**
+ * Adds a 1-pixel outline (character `outline`) around every drawn pixel of a
+ * text-row sprite, growing it by one pixel on each side. Lets sprites be
+ * authored as plain fill shapes.
+ */
+export function withOutline(rows: string[], outline = 'K'): string[] {
+  const h = rows.length + 2
+  const w = Math.max(...rows.map((r) => r.length)) + 2
+  const filled = (x: number, y: number) => {
+    const ch = rows[y - 1]?.[x - 1]
+    return !!ch && ch !== '.'
+  }
+  const out: string[] = []
+  for (let y = 0; y < h; y++) {
+    let row = ''
+    for (let x = 0; x < w; x++) {
+      if (filled(x, y)) row += rows[y - 1][x - 1]
+      else if (filled(x - 1, y) || filled(x + 1, y) || filled(x, y - 1) || filled(x, y + 1)) row += outline
+      else row += '.'
+    }
+    out.push(row)
+  }
+  return out
 }

@@ -1,95 +1,72 @@
-import { PixelArt, type PeekerSprite, type SpriteState } from '../Peeker'
+import { PixelArt, withOutline, type PeekerSprite, type SpriteState } from '../Peeker'
 
-// A Codex-style pixel cloud with a ">_" terminal-prompt face. Climb style:
-// its hands grab the edge first, then it pulls itself up.
+// Codex's mascot: a blue cloud-headed chibi with a dark screen for a face
+// (cyan ">_" eyes) and a ">-" mark on its chest. Peek style, slaps with its
+// right arm.
 
-const U = 4 // px per pixel
+const U = 3 // px per pixel
+
 const PALETTE = {
-  K: '#1e1b4b', // outline
-  B: '#8b9cff', // body
-  L: '#c3cbff', // highlight
-  S: '#6a7cf0', // shadow
+  K: '#1b2a7a', // outline
+  B: '#3f63f0', // body
+  L: '#7f9bff', // highlight
+  D: '#2b47c9', // shade
+  S: '#121a3f', // screen
+  M: '#9db3ff', // chest mark
 }
-const FACE = '#ffffff'
+const EYE = '#6ff3f7'
 
-const SHAPE = [
-  '....KKKKKK....',
-  '..KKLLLLBBKK..',
-  '.KLLBBBBBBBBK.',
-  'KLBBBBBBBBBBBK',
-  'KBBBBBBBBBBBBK',
-  'KBBBBBBBBBBBBK',
-  'KBBBBBBBBBBBBK',
-  'KBBBBBBBBBBBSK',
-  'KSBBBBBBBBBSSK',
-  '.KSSBBBBBBSSK.',
-  '..KKKKKKKKKK..',
-]
+// Fill shapes; withOutline() adds the dark border (and one pixel on each side).
+// Cloud head with three bumps, a screen face, a small body and feet. The right
+// arm is drawn separately so it can slap.
+const SHAPE = withOutline([
+  '....LLL.BBBB....',
+  '..LLLLBBBBBBBB..',
+  '.LLBBBBBBBBBBBB.',
+  'LLBBSSSSSSSSBBBB',
+  'LBBSSSSSSSSSSBBB',
+  '.BBSSSSSSSSSSBB.',
+  'BBBSSSSSSSSSSBBD',
+  'BBBSSSSSSSSSSBBD',
+  'BBBBSSSSSSSSBBDD',
+  '.BBBBBBBBBBBBDD.',
+  '..DDBBBBBBBDDD..',
+  '....BBBBBBBD....',
+  '..BBBMBBBBBD....',
+  '..BBBBMBMMBD....',
+  '....BMBBBBBD....',
+  '.....DD..DD.....',
+  '.....DD..DD.....',
+])
+const ARM = withOutline(['BD', 'DD'])
 
-function CodexBody({ look, blink, startled }: SpriteState) {
+// Faces, in SHAPE coordinates (the screen spans x 4-13, y 4-9).
+const FACES = {
+  prompt: ['W.....', '.W....', 'W..WWW'], // ">_"
+  blink: ['......', 'WW..WW', '......'], // "- -"
+  startled: ['WW..WW', 'WW..WW', '......'], // wide eyes
+  happy: ['.W...W.', 'W.W.W.W', '.......'], // "^ ^"
+}
+
+function CodexBody({ look, blink, startled, slap }: SpriteState) {
+  const face = startled ? FACES.startled : slap === 'hit' ? FACES.happy : blink ? FACES.blink : FACES.prompt
+  const faceX = slap === 'hit' ? 5 : 6
+  // Right arm: at its side, raised on windup, swung down on hit.
+  const arm = slap === 'windup' ? { x: 14, y: 8 } : slap === 'hit' ? { x: 14, y: 12 } : { x: 12, y: 12 }
   return (
-    <svg viewBox="0 0 14 11" width={14 * U} height={11 * U} shapeRendering="crispEdges" style={{ display: 'block' }}>
+    <svg viewBox="0 0 18 19" width={18 * U} height={19 * U} shapeRendering="crispEdges" style={{ display: 'block' }}>
       <PixelArt rows={SHAPE} palette={PALETTE} />
-      <g transform={`translate(${look * 0.5} 0)`}>
-        {startled ? (
-          // Wide eyes.
-          <>
-            <rect x={4} y={4} width={2} height={2} fill={FACE} />
-            <rect x={8} y={4} width={2} height={2} fill={FACE} />
-          </>
-        ) : (
-          <>
-            {/* ">" */}
-            <PixelArt rows={['W.', '.W', 'W.']} palette={{ W: FACE }} x={4} y={4} />
-            {/* "_" cursor: blinks like a terminal cursor */}
-            {!blink && <rect x={7} y={6} width={3} height={1} fill={FACE} />}
-          </>
-        )}
-      </g>
-    </svg>
-  )
-}
-
-// One mitten hand; the bottom two rows are the fingers that curl over the edge.
-const HAND = [
-  '.KKK.',
-  'KLBBK',
-  'KBBBK',
-  'KBKBK',
-  '.K.K.',
-]
-
-// Both hands in an 18-wide box: they sit at the body's sides (the body is 14
-// wide and centred on the same point).
-function CodexHands({ walking, step, slap }: SpriteState) {
-  // Hand over hand while shimmying along the edge.
-  const lift = (hand: 0 | 1) => (walking && step === hand ? -1 : 0)
-  return (
-    <svg
-      viewBox="0 0 18 5"
-      width={18 * U}
-      height={5 * U}
-      shapeRendering="crispEdges"
-      style={{ display: 'block', overflow: 'visible' }}
-    >
-      <PixelArt rows={HAND} palette={PALETTE} x={0} y={lift(0)} />
-      {/* Right hand slaps: up on windup, down past the edge on hit. */}
-      <PixelArt rows={HAND} palette={PALETTE} x={13} y={slap === 'windup' ? -3 : slap === 'hit' ? 1.5 : lift(1)} />
+      <PixelArt rows={ARM} palette={PALETTE} x={arm.x} y={arm.y} />
+      <PixelArt rows={face} palette={{ W: EYE }} x={faceX + look} y={5} />
     </svg>
   )
 }
 
 export const codex: PeekerSprite = {
-  width: 14 * U,
-  height: 11 * U,
+  width: 18 * U,
+  height: 19 * U,
   Body: CodexBody,
-  peek: 8 * U, // face above the edge, between its hands
-  curious: 11 * U, // pulls itself all the way up
-  slapX: 6.5 * U, // right hand
-  hands: {
-    Component: CodexHands,
-    width: 18 * U,
-    height: 5 * U,
-    grip: 2 * U, // fingers over the edge
-  },
+  peek: 11 * U, // cloud head and screen face above the edge
+  curious: 15 * U, // climbs out until its chest shows
+  slapX: 7 * U, // right arm, swung out
 }

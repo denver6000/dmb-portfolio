@@ -183,7 +183,8 @@ export default function Portfolio() {
         © {new Date().getFullYear()} {profile.name}
       </footer>
 
-      {/* Shy critters: hide behind [data-peeker-hideout] cards, chase the scroll, slap clicked buttons. */}
+      {/* Shy critters: peek from [data-peeker-hideout] cards in view, slap clicked links/buttons.
+          See src/components/peeker/HANDOFF.md. */}
       <PeekerStage critters={[clawd, codex]} viewportTop={64} />
     </div>
   )

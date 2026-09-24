@@ -1,14 +1,14 @@
 # Peeker
 
-Shy pixel critters that live behind elements on your page. They peek out, chase the scroll,
-and slap buttons when you click them. Only needs `react` and `framer-motion`; no CSS
+Shy pixel critters that live behind elements on your page. They peek out from whatever
+you're looking at and slap buttons when you click them. Only needs `react` and `framer-motion`; no CSS
 framework.
 
 ```
 peeker/
   Peeker.tsx          the engine: <PeekerStage> + the PixelArt helper. Copy this to reuse it.
   sprites/clawd.tsx   peek style: slides out, looks around, creeps along edges
-  sprites/codex.tsx   climb style: hands grab the edge first, then it pulls itself up
+  sprites/codex.tsx   Codex's cloud-headed mascot with a ">_" screen face
 ```
 
 ## Use
@@ -32,12 +32,14 @@ the critter at the element's edge, so no z-index setup is needed.
 
 ## What they do
 
-- **Peek:** every few seconds a critter slides out from an edge of its hideout, looks
-  around, sometimes creeps along the edge or climbs out further, then ducks back. Climbers
-  (sprites with `hands`) grab the edge first and hang there before pulling up.
-- **Chase the scroll:** when their hideout scrolls mostly out of view, they climb out and
-  run along with the page. When scrolling stops, they hop to the nearest visible hideout
-  and dive behind it. Two critters never share the same edge.
+- **Peek:** every couple of seconds a critter slides out from an edge of a hideout, looks
+  around, sometimes creeps along the edge or climbs out further, then ducks back. Sprites
+  with `hands` climb instead: the hands grab the edge first and hang there before it pulls
+  up, then lift off and drop back behind when it leaves.
+- **Stay in view:** they only appear on hideouts that are on screen. Between peeks they may
+  slip over to another visible hideout (`wander`). When you scroll, a critter whose spot
+  scrolls away ducks. Once scrolling stops, they reappear on cards in view within about a
+  second. They never fly across the page. Two critters never peek at the same spot at once.
 - **Slap:** clicking a link or button (`slapSelector`) sends the nearest free critter to pop
   out from behind it and slap it (sometimes twice). A spark appears and the element gets
   bumped. Link navigation is held until the slap lands (about 0.5 s), then it opens as it
@@ -46,7 +48,7 @@ the critter at the element's edge, so no z-index setup is needed.
 - **Shy:** if the cursor comes within `shyRadius`, or someone taps near it, a peeking
   critter gets wide-eyed and hides.
 - **Reduced motion:** visitors who prefer reduced motion just see them sitting still,
-  peeking over the home hideout. No chasing and no slapping.
+  peeking over the home hideout. No moving around and no slapping.
 
 ## `<PeekerStage>` props
 
@@ -57,8 +59,9 @@ the critter at the element's edge, so no z-index setup is needed.
 | `homeSelector` | `'[data-peeker-hideout="home"]'` | Where they start (falls back to the first hideout). |
 | `slapSelector` | `'a, button, [data-peeker-slap]'` | Clicking these triggers a slap. |
 | `holdLinks` | `true` | Delay link navigation until the slap lands. |
-| `viewportTop` | `0` | Height of a fixed header, so they don't hide under it. |
-| `delay` | `[1500, 4500]` | Random wait between peeks, in ms. |
+| `viewportTop` | `0` | Height of a fixed header. Nothing is drawn over it. |
+| `delay` | `[900, 2600]` | Random wait between peeks, in ms. |
+| `wander` | `0.4` | Chance of moving to another visible hideout between peeks. |
 | `shyRadius` | `110` | Cursor distance (px) that scares a peeking critter. |
 | `zIndex` | `60` | z-index of the page-wide critter layer. |
 
@@ -92,7 +95,8 @@ const mine: PeekerSprite = {
 
 Use them to move the eyes, lift legs or hands, and swing the slapping limb.
 
-`PixelArt` draws pixel art from text rows, one character per pixel:
+`PixelArt` draws pixel art from text rows, one character per pixel. `withOutline(rows)` adds a
+1-pixel border around a fill shape, so you can draw just the fill:
 
 ```tsx
 <svg viewBox="0 0 5 3" width={20} height={12} shapeRendering="crispEdges">
