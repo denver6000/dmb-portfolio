@@ -1,0 +1,3 @@
+# Hostinger (Apache/LiteSpeed): make /login open the admin page at /login/.
+RewriteEngine On
+RewriteRule ^login$ /login/ [R=301,L]

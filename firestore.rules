@@ -1,0 +1,360 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Public, read-only portfolio (unauthenticated reads explicitly requested).
+// Only the registered owner (admin/owner.uid) can write content.
+//
+// Collection: admin
+// Document ID: "owner" (single document, one-time registration)
+// Fields:
+//   - uid: string (required, == request.auth.uid, immutable)
+//   - email: string (required, == request.auth.token.email, immutable)
+//   - createdAt: timestamp (required, == request.time, immutable)
+//   Create-only: once it exists, nobody can register again (no update/delete).
+//
+// Collection: profile
+// Document ID: "main" (single document)
+// Fields:
+//   - name: string (required, 1-100)
+//   - headline: string (optional, 1-200)
+//   - location: string (optional, 1-100)
+//   - focus: string (optional, 1-200)
+//   - email: string (optional, email format, <= 200) - public contact email
+//   - githubUrl / linkedinUrl / facebookUrl / resumeUrl:
+//       string (optional, http(s) URL, <= 500)
+//   - updatedAt: timestamp (required, == request.time)
+//
+// Every content collection below also has:
+//   - published: bool (required) - drafts are visible to the owner only
+//   - createdAt: timestamp (required, == request.time on create, immutable)
+//   - updatedAt: timestamp (required, == request.time)
+//
+// Collection: skills      (public order: order asc)
+//   - category: string (required, 1-60)
+//   - items: list<string> (required, <= 20 items, each 1-80)
+//   - order: int (required, 0-10000)
+//
+// Collection: education   (public order: startYear desc)
+//   - school: string (required, 1-150)
+//   - degree: string (required, 1-150)
+//   - fieldOfStudy: string (optional, 1-150)
+//   - location: string (optional, 1-100)
+//   - startYear: int (required, 1950-2100)
+//   - endYear: int (optional, 1950-2100, >= startYear; absent = present)
+//   - description: string (optional, 1-2000)
+//   - highlights: list<string> (required, <= 20 items, each 1-300)
+//
+// Collection: experience  (public order: startDate desc)
+//   - role: string (required, 1-150)
+//   - company: string (required, 1-150)
+//   - employmentType: string (required, enum below)
+//   - location: string (optional, 1-100)
+//   - startDate: timestamp (required)
+//   - endDate: timestamp (optional, >= startDate; absent = present)
+//   - description: string (optional, 1-2000)
+//   - highlights: list<string> (required, <= 20 items, each 1-300)
+//   - tags: list<string> (required, <= 20 items, each 1-40)
+//
+// Collection: projects    (public order: order asc)
+//   - title: string (required, 1-120)
+//   - category: string (required, 'featured' | 'personal')
+//   - period: string (optional, 1-30) - display label, e.g. "2023-2025"
+//   - summary: string (required, 1-500)
+//   - description: string (optional, 1-5000)
+//   - tags: list<string> (required, <= 20 items, each 1-40)
+//   - private: bool (required) - shows "Private/Client-Restricted"
+//   - liveUrl / repoUrl / docsUrl: string (optional, http(s) URL, <= 500)
+//   - order: int (required, 0-10000)
+//
+// Collection: competitions (public order: startYear desc)
+//   - title: string (required, 1-150)
+//   - event: string (required, 1-200)
+//   - startYear: int (required, 1950-2100)
+//   - endYear: int (optional, 1950-2100, >= startYear)
+//   - description: string (optional, 1-2000)
+//   - linkUrl: string (optional, http(s) URL, <= 500)
+//
+// Collection: certifications (public order: issueDate desc)
+//   - name: string (required, 1-150)
+//   - issuer: string (required, 1-150)
+//   - issueDate: timestamp (required)
+//   - expiryDate: timestamp (optional, >= issueDate)
+//   - credentialId: string (optional, 1-100)
+//   - credentialUrl: string (optional, http(s) URL, <= 500)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function ownerPath() {
+      return /databases/$(database)/documents/admin/owner;
+    }
+
+    // The registered site owner. get() fails (-> deny) until registration exists.
+    function isAdmin() {
+      return isAuthenticated() && get(ownerPath()).data.uid == request.auth.uid;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    function isStr(value, minLen, maxLen) {
+      return value is string && value.size() >= minLen && value.size() <= maxLen;
+    }
+
+    function isValidUrl(url) {
+      return url is string && url.size() <= 500 &&
+        (url.matches('^https://.*') || url.matches('^http://.*'));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.size() <= 200 &&
+        email.matches('^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$');
+    }
+
+    function optStr(data, field, minLen, maxLen) {
+      return !(field in data) || isStr(data[field], minLen, maxLen);
+    }
+
+    function optUrl(data, field) {
+      return !(field in data) || isValidUrl(data[field]);
+    }
+
+    function isYear(value) {
+      return value is int && value >= 1950 && value <= 2100;
+    }
+
+    // Rules have no loops, so each index of a string list is checked explicitly.
+    function strAt(l, i, maxLen) {
+      return l.size() <= i || isStr(l[i], 1, maxLen);
+    }
+
+    function isStrList(l, maxLen) {
+      return l is list && l.size() <= 20 &&
+        strAt(l, 0, maxLen) && strAt(l, 1, maxLen) && strAt(l, 2, maxLen) && strAt(l, 3, maxLen) &&
+        strAt(l, 4, maxLen) && strAt(l, 5, maxLen) && strAt(l, 6, maxLen) && strAt(l, 7, maxLen) &&
+        strAt(l, 8, maxLen) && strAt(l, 9, maxLen) && strAt(l, 10, maxLen) && strAt(l, 11, maxLen) &&
+        strAt(l, 12, maxLen) && strAt(l, 13, maxLen) && strAt(l, 14, maxLen) && strAt(l, 15, maxLen) &&
+        strAt(l, 16, maxLen) && strAt(l, 17, maxLen) && strAt(l, 18, maxLen) && strAt(l, 19, maxLen);
+    }
+
+
+    // Shared by every content collection.
+    function isValidMeta(data) {
+      return data.published is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt == request.time;
+    }
+
+    // ===============================================================
+    // Domain Validators (used in both create and update)
+    // ===============================================================
+
+    function isValidOwner(data) {
+      return hasRequiredFields(['uid', 'email', 'createdAt']) &&
+        hasOnlyAllowedFields(['uid', 'email', 'createdAt']) &&
+        data.uid == request.auth.uid &&
+        data.email == request.auth.token.email &&
+        data.createdAt == request.time;
+    }
+
+    function isValidProfile(data) {
+      return hasRequiredFields(['name', 'updatedAt']) &&
+        hasOnlyAllowedFields(['name', 'headline', 'location', 'focus', 'email', 'githubUrl', 'linkedinUrl', 'facebookUrl', 'resumeUrl', 'updatedAt']) &&
+        isStr(data.name, 1, 100) &&
+        optStr(data, 'headline', 1, 200) &&
+        optStr(data, 'location', 1, 100) &&
+        optStr(data, 'focus', 1, 200) &&
+        (!('email' in data) || isValidEmail(data.email)) &&
+        optUrl(data, 'githubUrl') &&
+        optUrl(data, 'linkedinUrl') &&
+        optUrl(data, 'facebookUrl') &&
+        optUrl(data, 'resumeUrl') &&
+        data.updatedAt == request.time;
+    }
+
+    function isValidSkillGroup(data) {
+      return hasRequiredFields(['category', 'items', 'order', 'published', 'createdAt', 'updatedAt']) &&
+        hasOnlyAllowedFields(['category', 'items', 'order', 'published', 'createdAt', 'updatedAt']) &&
+        isStr(data.category, 1, 60) &&
+        isStrList(data.items, 80) &&
+        data.order is int && data.order >= 0 && data.order <= 10000 &&
+        isValidMeta(data);
+    }
+
+    function isValidEducation(data) {
+      return hasRequiredFields(['school', 'degree', 'startYear', 'highlights', 'published', 'createdAt', 'updatedAt']) &&
+        hasOnlyAllowedFields(['school', 'degree', 'fieldOfStudy', 'location', 'startYear', 'endYear', 'description', 'highlights', 'published', 'createdAt', 'updatedAt']) &&
+        isStr(data.school, 1, 150) &&
+        isStr(data.degree, 1, 150) &&
+        optStr(data, 'fieldOfStudy', 1, 150) &&
+        optStr(data, 'location', 1, 100) &&
+        isYear(data.startYear) &&
+        (!('endYear' in data) || (isYear(data.endYear) && data.endYear >= data.startYear)) &&
+        optStr(data, 'description', 1, 2000) &&
+        isStrList(data.highlights, 300) &&
+        isValidMeta(data);
+    }
+
+    function isValidExperience(data) {
+      return hasRequiredFields(['role', 'company', 'employmentType', 'startDate', 'highlights', 'tags', 'published', 'createdAt', 'updatedAt']) &&
+        hasOnlyAllowedFields(['role', 'company', 'employmentType', 'location', 'startDate', 'endDate', 'description', 'highlights', 'tags', 'published', 'createdAt', 'updatedAt']) &&
+        isStr(data.role, 1, 150) &&
+        isStr(data.company, 1, 150) &&
+        data.employmentType in ['full-time', 'part-time', 'contract', 'freelance', 'internship', 'volunteer'] &&
+        optStr(data, 'location', 1, 100) &&
+        data.startDate is timestamp &&
+        (!('endDate' in data) || (data.endDate is timestamp && data.endDate >= data.startDate)) &&
+        optStr(data, 'description', 1, 2000) &&
+        isStrList(data.highlights, 300) &&
+        isStrList(data.tags, 40) &&
+        isValidMeta(data);
+    }
+
+    function isValidProject(data) {
+      return hasRequiredFields(['title', 'category', 'summary', 'tags', 'private', 'order', 'published', 'createdAt', 'updatedAt']) &&
+        hasOnlyAllowedFields(['title', 'category', 'period', 'summary', 'description', 'tags', 'private', 'liveUrl', 'repoUrl', 'docsUrl', 'order', 'published', 'createdAt', 'updatedAt']) &&
+        isStr(data.title, 1, 120) &&
+        data.category in ['featured', 'personal'] &&
+        optStr(data, 'period', 1, 30) &&
+        isStr(data.summary, 1, 500) &&
+        optStr(data, 'description', 1, 5000) &&
+        isStrList(data.tags, 40) &&
+        data.private is bool &&
+        optUrl(data, 'liveUrl') &&
+        optUrl(data, 'repoUrl') &&
+        optUrl(data, 'docsUrl') &&
+        data.order is int && data.order >= 0 && data.order <= 10000 &&
+        isValidMeta(data);
+    }
+
+    function isValidCompetition(data) {
+      return hasRequiredFields(['title', 'event', 'startYear', 'published', 'createdAt', 'updatedAt']) &&
+        hasOnlyAllowedFields(['title', 'event', 'startYear', 'endYear', 'description', 'linkUrl', 'published', 'createdAt', 'updatedAt']) &&
+        isStr(data.title, 1, 150) &&
+        isStr(data.event, 1, 200) &&
+        isYear(data.startYear) &&
+        (!('endYear' in data) || (isYear(data.endYear) && data.endYear >= data.startYear)) &&
+        optStr(data, 'description', 1, 2000) &&
+        optUrl(data, 'linkUrl') &&
+        isValidMeta(data);
+    }
+
+    function isValidCertification(data) {
+      return hasRequiredFields(['name', 'issuer', 'issueDate', 'published', 'createdAt', 'updatedAt']) &&
+        hasOnlyAllowedFields(['name', 'issuer', 'issueDate', 'expiryDate', 'credentialId', 'credentialUrl', 'published', 'createdAt', 'updatedAt']) &&
+        isStr(data.name, 1, 150) &&
+        isStr(data.issuer, 1, 150) &&
+        data.issueDate is timestamp &&
+        (!('expiryDate' in data) || (data.expiryDate is timestamp && data.expiryDate >= data.issueDate)) &&
+        optStr(data, 'credentialId', 1, 100) &&
+        optUrl(data, 'credentialUrl') &&
+        isValidMeta(data);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    // One-time owner registration. `create` only succeeds while the document
+    // does not exist; writing to an existing doc is an update, which is denied.
+    // The email guard stops anyone else claiming ownership before you register.
+    match /admin/{docId} {
+      allow get: if isAuthenticated() && docId == 'owner' &&
+        (resource == null || resource.data.uid == request.auth.uid);
+      allow create: if isAuthenticated() && docId == 'owner' &&
+        request.auth.token.email == 'denverballesteros01@gmail.com' &&
+        request.auth.token.email_verified == true &&
+        isValidOwner(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /profile/{docId} {
+      allow read: if docId == 'main';
+      allow create, update: if isAdmin() && docId == 'main' && isValidProfile(request.resource.data);
+      allow delete: if false;
+    }
+
+    // Content: published entries are public; drafts are owner-only.
+    // Public list queries must filter on published == true.
+    match /skills/{entryId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidSkillGroup(request.resource.data) &&
+        request.resource.data.createdAt == request.time;
+      allow update: if isAdmin() && isValidSkillGroup(request.resource.data) &&
+        areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isAdmin();
+    }
+
+    match /education/{entryId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidEducation(request.resource.data) &&
+        request.resource.data.createdAt == request.time;
+      allow update: if isAdmin() && isValidEducation(request.resource.data) &&
+        areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isAdmin();
+    }
+
+    match /experience/{entryId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidExperience(request.resource.data) &&
+        request.resource.data.createdAt == request.time;
+      allow update: if isAdmin() && isValidExperience(request.resource.data) &&
+        areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isAdmin();
+    }
+
+    match /projects/{entryId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidProject(request.resource.data) &&
+        request.resource.data.createdAt == request.time;
+      allow update: if isAdmin() && isValidProject(request.resource.data) &&
+        areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isAdmin();
+    }
+
+    match /competitions/{entryId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidCompetition(request.resource.data) &&
+        request.resource.data.createdAt == request.time;
+      allow update: if isAdmin() && isValidCompetition(request.resource.data) &&
+        areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isAdmin();
+    }
+
+    match /certifications/{entryId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create: if isAdmin() && isValidCertification(request.resource.data) &&
+        request.resource.data.createdAt == request.time;
+      allow update: if isAdmin() && isValidCertification(request.resource.data) &&
+        areImmutableFieldsUnchanged(['createdAt']);
+      allow delete: if isAdmin();
+    }
+
+    // Default deny for everything else (including the old messages collection).
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

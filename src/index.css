@@ -1,0 +1,96 @@
+@import 'tailwindcss';
+
+/* Design tokens from the laravel-portfolio concept (dark theme). */
+@theme {
+  --color-background: hsl(220 13% 9%);
+  --color-foreground: hsl(220 13% 95%);
+  --color-card: hsl(220 13% 14%);
+  --color-card-foreground: hsl(220 13% 95%);
+  --color-primary: hsl(210 100% 50%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-muted: hsl(220 13% 16%);
+  --color-muted-foreground: hsl(220 10% 65%);
+  --color-border: hsl(220 13% 20%);
+  --color-destructive: hsl(0 84% 60%);
+
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  :root {
+    /* Peeker sprites draw their eyes in this colour (see src/components/peeker). */
+    --peeker-eye: var(--color-background);
+  }
+
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    overflow-x: clip;
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  /* Sections scroll clear of the fixed header. */
+  section[id] {
+    scroll-margin-top: 80px;
+  }
+}
+
+@layer components {
+  .heading-font {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+  }
+
+  .timeline-line {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(
+      180deg,
+      hsl(210 100% 50% / 0) 0%,
+      hsl(210 100% 50% / 0.5) 10%,
+      hsl(210 100% 50% / 0.5) 90%,
+      hsl(210 100% 50% / 0) 100%
+    );
+  }
+
+  .timeline-dot {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    border: 3px solid var(--color-background);
+    box-shadow: 0 0 0 4px hsl(210 100% 50% / 0.2);
+  }
+
+  /* Shared button styles. */
+  .btn-primary {
+    @apply inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all duration-200 hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 rounded-xl border border-border bg-card px-6 py-3 font-semibold text-foreground shadow-sm transition-all duration-200 hover:bg-muted active:scale-[0.98];
+  }
+
+  .pill-link {
+    @apply inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-all duration-200 hover:bg-primary/20;
+  }
+
+  /* Admin form controls. */
+  .input {
+    @apply w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 transition-colors focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/20;
+  }
+}
