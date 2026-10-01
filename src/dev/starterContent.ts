@@ -126,6 +126,8 @@ export const starterContent: { [K in SectionId]: Starter<K>[] } = {
       tags: [],
       private: false,
       liveUrl: 'https://chlctherapy.online/',
+      collaboratorName: 'Nueva Technology',
+      collaboratorUrl: 'https://nuevatechsoftware.com/',
       screenshots: ['/projects/chlc-site.png'],
       order: 5,
       published: true,

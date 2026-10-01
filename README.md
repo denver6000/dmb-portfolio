@@ -35,7 +35,7 @@ validates the same limits.
 | --- | --- | --- |
 | `profile/main` | n/a | name, headline, location, focus, email (Gmail), GitHub/LinkedIn/Facebook/résumé URLs |
 | `skills` | display order | category, items (one per line) |
-| `projects` | display order within type | title, project type, period label, summary, details, screenshot URLs, tags, live/promotional/repo/docs URLs, private flag |
+| `projects` | display order within type | title, project type, period label, summary, details, screenshot URLs, tags, live/promotional/repo/docs URLs, collaborator name/URL, private flag |
 | `education` | start year, newest first | degree, school, field of study, startYear, endYear (blank = present), highlights |
 | `experience` | start date, newest first | role, company, employment type, start/end month (blank end = present), highlights, tags |
 | `competitions` | year, newest first | title/placement, event, year, until-year (multi-year titles), description, link |
@@ -65,10 +65,25 @@ Deploy rule or index changes with:
 npx -y firebase-tools@latest deploy --only firestore,auth
 ```
 
-## Deploy on Hostinger (GitHub integration)
+## Deploy on Hostinger shared hosting
 
-Build command `npm run build`, output directory `dist` (it contains `index.html` and
-`login/index.html`). `public/.htaccess` redirects `/login` to `/login/`.
+`.github/workflows/deploy-hostinger.yml` builds the site on pushes to `main` and can also be
+run manually from GitHub Actions. It uploads `dist/` (including `index.html` and
+`login/index.html`) to the site's document root via FTPS. `public/.htaccess` redirects
+`/login` to `/login/`.
+
+Configure these repository Actions secrets from Hostinger's **Websites → Dashboard → Files → FTP Accounts**:
+
+- `HOSTINGER_FTP_SERVER`: FTP host/IP
+- `HOSTINGER_FTP_USERNAME`: FTP account username
+- `HOSTINGER_FTP_PASSWORD`: FTP account password
+
+Set repository Actions variable `HOSTINGER_FTP_SERVER_DIR` to the target directory **as seen
+from that FTP account**, with a trailing slash. For an account rooted above the site,
+this is usually `public_html/`; for an account rooted in `public_html`, use `./`.
+Check the account's actual root before setting this value. The workflow fails before upload
+if any setting is absent. The first successful run should be checked at
+`https://dmballesteros.com/` and `https://dmballesteros.com/login/`.
 
 ## Authorized domains (Google sign-in)
 

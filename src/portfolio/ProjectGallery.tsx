@@ -161,6 +161,14 @@ function ProjectDetail({ project }: { project: Project }) {
           </div>
           <h1 className="heading-font text-3xl leading-tight font-bold sm:text-4xl">{project.title}</h1>
           <p className="mt-5 text-base leading-relaxed text-foreground/90">{project.summary}</p>
+          {project.collaboratorName && (
+            <p className="mt-4 text-sm text-muted-foreground">
+              In collaboration with{' '}
+              {project.collaboratorUrl ? (
+                <a href={project.collaboratorUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-4 hover:text-foreground">{project.collaboratorName}</a>
+              ) : <span className="font-medium text-foreground">{project.collaboratorName}</span>}
+            </p>
+          )}
           {project.description && <div className="mt-6 border-t border-border pt-6 text-sm leading-7 whitespace-pre-line text-muted-foreground">{project.description}</div>}
           {project.private && (
             <p className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><LockKeyhole className="h-4 w-4" /> Private or client-restricted work</p>

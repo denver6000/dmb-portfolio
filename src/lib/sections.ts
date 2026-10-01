@@ -84,6 +84,8 @@ export const SECTIONS: Record<SectionId, SectionDef> = {
       { key: 'promoUrl', label: 'Promotional site URL', type: 'url' },
       { key: 'repoUrl', label: 'Repository URL', type: 'url' },
       { key: 'docsUrl', label: 'Docs URL', type: 'url' },
+      { key: 'collaboratorName', label: 'Collaborator name', type: 'text', max: 120 },
+      { key: 'collaboratorUrl', label: 'Collaborator URL', type: 'url' },
       { key: 'private', label: 'Private / client-restricted', type: 'bool' },
     ],
   },

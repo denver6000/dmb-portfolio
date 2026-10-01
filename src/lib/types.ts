@@ -87,6 +87,8 @@ export interface Project extends EntryMeta {
   promoUrl?: string
   repoUrl?: string
   docsUrl?: string
+  collaboratorName?: string
+  collaboratorUrl?: string
   order: number
 }
 

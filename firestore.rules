@@ -251,7 +251,7 @@ service cloud.firestore {
 
     function isValidProject(data) {
       return hasRequiredFields(['title', 'summary', 'tags', 'private', 'order', 'published', 'createdAt', 'updatedAt']) &&
-        hasOnlyAllowedFields(['title', 'category', 'projectType', 'period', 'summary', 'description', 'screenshots', 'tags', 'private', 'liveUrl', 'promoUrl', 'repoUrl', 'docsUrl', 'order', 'published', 'createdAt', 'updatedAt']) &&
+        hasOnlyAllowedFields(['title', 'category', 'projectType', 'period', 'summary', 'description', 'screenshots', 'tags', 'private', 'liveUrl', 'promoUrl', 'repoUrl', 'docsUrl', 'collaboratorName', 'collaboratorUrl', 'order', 'published', 'createdAt', 'updatedAt']) &&
         isStr(data.title, 1, 120) &&
         (!('category' in data) || data.category in ['featured', 'personal']) &&
         (!('projectType' in data) || data.projectType in ['websites', 'android-app', 'games', 'ai-integrations', 'misc']) &&
@@ -265,6 +265,8 @@ service cloud.firestore {
         optUrl(data, 'promoUrl') &&
         optUrl(data, 'repoUrl') &&
         optUrl(data, 'docsUrl') &&
+        optStr(data, 'collaboratorName', 1, 120) &&
+        optUrl(data, 'collaboratorUrl') &&
         data.order is int && data.order >= 0 && data.order <= 10000 &&
         isValidMeta(data);
     }
