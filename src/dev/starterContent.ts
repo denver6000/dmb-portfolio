@@ -132,6 +132,19 @@ export const starterContent: { [K in SectionId]: Starter<K>[] } = {
       order: 5,
       published: true,
     },
+    {
+      title: 'MikroTik MCP',
+      projectType: 'ai-integrations',
+      period: '2026',
+      summary: 'A Model Context Protocol server that lets AI assistants run RouterOS commands on MikroTik routers over SSH.',
+      description: 'Built with Node.js and TypeScript. Each tool call reads its profile configuration and opens a fresh SSH connection. Config and policy behavior are covered by tests; testing against physical MikroTik hardware is still pending.',
+      tags: ['MCP', 'TypeScript', 'RouterOS', 'SSH'],
+      private: false,
+      repoUrl: 'https://github.com/denver6000/mikrotik-mcp',
+      docsUrl: 'https://github.com/denver6000/mikrotik-mcp/tree/main/docs',
+      order: 6,
+      published: true,
+    },
   ],
   education: [
     {
