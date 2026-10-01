@@ -67,23 +67,12 @@ npx -y firebase-tools@latest deploy --only firestore,auth
 
 ## Deploy on Hostinger shared hosting
 
-`.github/workflows/deploy-hostinger.yml` builds the site on pushes to `main` and can also be
-run manually from GitHub Actions. It uploads `dist/` (including `index.html` and
-`login/index.html`) to the site's document root via FTPS. `public/.htaccess` redirects
-`/login` to `/login/`.
-
-Configure these repository Actions secrets from Hostinger's **Websites → Dashboard → Files → FTP Accounts**:
-
-- `HOSTINGER_FTP_SERVER`: FTP host/IP
-- `HOSTINGER_FTP_USERNAME`: FTP account username
-- `HOSTINGER_FTP_PASSWORD`: FTP account password
-
-Set repository Actions variable `HOSTINGER_FTP_SERVER_DIR` to the target directory **as seen
-from that FTP account**, with a trailing slash. For an account rooted above the site,
-this is usually `public_html/`; for an account rooted in `public_html`, use `./`.
-Check the account's actual root before setting this value. The workflow fails before upload
-if any setting is absent. The first successful run should be checked at
-`https://dmballesteros.com/` and `https://dmballesteros.com/login/`.
+The Hostinger project automatically builds and publishes commits pushed to `main`.
+The build command is `npm run build`; the output directory is `dist` (including
+`index.html` and `login/index.html`). `public/.htaccess` redirects `/login` to
+`/login/`. There is no separate GitHub Actions FTP deployment in this repository.
+After a push, verify `https://dmballesteros.com/` and
+`https://dmballesteros.com/login/` after Hostinger finishes updating.
 
 ## Authorized domains (Google sign-in)
 
