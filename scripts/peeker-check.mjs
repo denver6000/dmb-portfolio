@@ -2,10 +2,10 @@
 // headless Chromium browser over the DevTools protocol. Needs the dev server running.
 //
 //   npm run dev
-//   npm run check:peeker                       # desktop, 1280x900
+//   npm run check:peeker                       # desktop gallery, 1280x900
 //   npm run check:peeker -- --size 390x844     # phone
 //
-// Options: --url <url> (default http://localhost:5173/), --size WxH, --shots <dir> to save
+// Options: --url <url> (default http://localhost:5173/?demo#projects), --size WxH, --shots <dir> to save
 // screenshots. Set BROWSER to a Chrome/Edge/Chromium binary if it isn't found automatically.
 // Exits non-zero if a check fails.
 import { spawn } from 'node:child_process'
@@ -18,7 +18,7 @@ const opt = (name, fallback) => {
   const i = args.indexOf(`--${name}`)
   return i >= 0 ? args[i + 1] : fallback
 }
-const url = opt('url', 'http://localhost:5173/')
+const url = opt('url', 'http://localhost:5173/?demo#projects')
 const [W, H] = opt('size', '1280x900').split('x').map(Number)
 const shots = opt('shots', null)
 if (shots) mkdirSync(shots, { recursive: true })
@@ -84,7 +84,7 @@ const STATE = `(() => {
     const body = a.children[0].querySelector('svg').getBoundingClientRect();
     const vis = Math.max(0, Math.min(body.bottom, box.bottom) - Math.max(body.top, box.top));
     const m = new DOMMatrix(getComputedStyle(a).transform);
-    return { vis: Math.round(vis), onScreen: m.e > 0 && m.e < innerWidth && m.f > 64 && m.f < innerHeight, spark: !!a.querySelector('rect[fill="#facc15"]') };
+    return { vis: Math.round(vis), onScreen: m.e > 0 && m.e < innerWidth && m.f > 112 && m.f < innerHeight, spark: !!a.querySelector('rect[fill="#facc15"]') };
   });
 })()`
 
@@ -108,7 +108,7 @@ if (!state) {
 const names = state.map((_, i) => ['clawd', 'codex'][i] ?? `critter${i}`)
 console.log(`Peeker check at ${W}x${H}, ${names.length} critters (${names.join(', ')})`)
 
-// 1. Peeks over 20 s at the top of the page.
+// 1. Peeks over 20 s at the top of the gallery.
 const peeks = state.map(() => 0)
 const was = state.map(() => false)
 const t0 = Date.now()
@@ -148,9 +148,18 @@ while (Date.now() - stop < 6000 && first.includes(null)) {
 await snap('2-after-scroll')
 check('reappear after scroll stops (< 4 s)', first.every((t) => t !== null && t < 4000), names.map((n, i) => `${n} ${first[i] ?? 'never'}ms`).join(', '))
 
-// 4. Click a visible pill link: a critter slaps it (spark). New-tab links then open.
+// 4. Open a project detail and click a pill link: a critter slaps it (spark).
+// The demo's first displayed card may have no external links after sorting by type.
+const detailUrl = await evaluate(`document.querySelector('a[href="#projects/p-0"]')?.href ?? document.querySelector('a[href*="#projects/"]')?.href`)
+if (detailUrl) {
+  await send('Page.navigate', { url: detailUrl })
+  for (let i = 0; i < 30; i++) {
+    if (await evaluate(`!!document.querySelector('a.pill-link')`)) break
+    await sleep(100)
+  }
+}
 await evaluate(`(() => { const a = document.querySelector('a.pill-link'); if (a) scrollTo({ top: a.getBoundingClientRect().top + scrollY - innerHeight / 2, behavior: 'instant' }) })()`)
-await sleep(1500)
+await sleep(500)
 const target = await evaluate(`(() => { const a = [...document.querySelectorAll('a.pill-link')].find((el) => { const r = el.getBoundingClientRect(); return r.top > 120 && r.bottom < innerHeight - 40 }); if (!a) return null; const r = a.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 } })()`)
 if (!target) {
   check('slap on click', false, 'no pill link found on the page')

@@ -26,7 +26,7 @@ export function toForm(fields: FieldDef[], doc?: Record<string, unknown> | null)
     if (f.type === 'month') values[f.key] = raw instanceof Timestamp ? timestampToMonth(raw) : ''
     else if (f.type === 'list') values[f.key] = Array.isArray(raw) ? raw.join('\n') : ''
     else if (f.type === 'bool') values[f.key] = raw === true ? 'true' : 'false'
-    else if (f.type === 'select') values[f.key] = typeof raw === 'string' ? raw : (f.options?.[0] ?? '')
+    else if (f.type === 'select') values[f.key] = typeof raw === 'string' ? raw : (f.defaultValue ?? f.options?.[0] ?? '')
     else values[f.key] = raw == null ? '' : String(raw)
   }
   return values
@@ -47,6 +47,9 @@ export function fromForm(fields: FieldDef[], values: FormValues): Record<string,
       if (items.length > MAX_LIST_ITEMS) throw new Error(`${f.label}: at most ${MAX_LIST_ITEMS} items.`)
       const tooLong = items.find((x) => f.max && x.length > f.max)
       if (tooLong) throw new Error(`${f.label}: "${tooLong.slice(0, 30)}…" is over ${f.max} characters.`)
+      if (f.listItemType === 'image-url' && items.some((x) => !/^https?:\/\/\S+$/i.test(x) && !/^\/(?!\/)\S+$/.test(x))) {
+        throw new Error(`${f.label}: use http(s) image URLs or paths starting with /.`)
+      }
       data[f.key] = items
       continue
     }

@@ -1,4 +1,4 @@
-import { EMPLOYMENT_TYPES, PROJECT_CATEGORIES, type SectionId } from './types'
+import { EMPLOYMENT_TYPES, PROJECT_TYPES, PROJECT_TYPE_LABELS, type SectionId } from './types'
 
 // Single source of truth for the profile and each content section: the
 // Firestore collection (same as the id), public sort order, and the admin
@@ -24,7 +24,10 @@ export interface FieldDef {
   required?: boolean
   max?: number // max string length (per item for lists)
   options?: readonly string[]
+  optionLabels?: Record<string, string>
+  defaultValue?: string
   hint?: string
+  listItemType?: 'image-url'
 }
 
 export interface SectionDef {
@@ -67,16 +70,18 @@ export const SECTIONS: Record<SectionId, SectionDef> = {
     id: 'projects',
     title: 'Projects',
     orderBy: ['order', 'asc'],
-    labelFields: ['title', 'category'],
+    labelFields: ['title', 'projectType'],
     fields: [
       { key: 'title', label: 'Title', type: 'text', required: true, max: 120 },
-      { key: 'category', label: 'Category', type: 'select', required: true, options: PROJECT_CATEGORIES },
+      { key: 'projectType', label: 'Project type', type: 'select', required: true, options: PROJECT_TYPES, optionLabels: PROJECT_TYPE_LABELS, defaultValue: 'misc' },
       { key: 'period', label: 'Period', type: 'text', max: 30, hint: 'e.g. 2026, 2023-2025, Recent' },
       { key: 'order', label: 'Display order', type: 'int', required: true, hint: 'Lower shows first' },
       { key: 'summary', label: 'Summary', type: 'textarea', required: true, max: 500 },
       { key: 'description', label: 'More details', type: 'textarea', max: 5000 },
+      { key: 'screenshots', label: 'Screenshots', type: 'list', max: 500, listItemType: 'image-url', hint: 'One image URL or path like /projects/app.png per line, in display order (max 20)' },
       { key: 'tags', label: 'Tech / tags', type: 'list', max: 40, hint: 'One per line, max 20' },
       { key: 'liveUrl', label: 'Live site URL', type: 'url' },
+      { key: 'promoUrl', label: 'Promotional site URL', type: 'url' },
       { key: 'repoUrl', label: 'Repository URL', type: 'url' },
       { key: 'docsUrl', label: 'Docs URL', type: 'url' },
       { key: 'private', label: 'Private / client-restricted', type: 'bool' },

@@ -44,7 +44,7 @@ export default function Hero({ profile, projectsHref }: { profile: Profile; proj
 
             <div className="flex flex-wrap gap-3">
               {projectsHref && (
-                <a href={projectsHref} className="btn-primary">
+                <a href={projectsHref} data-page-link className="btn-primary">
                   <span>View Projects</span>
                   <ArrowRight className="h-5 w-5" />
                 </a>

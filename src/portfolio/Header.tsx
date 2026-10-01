@@ -1,116 +1,51 @@
-import { useEffect, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { Menu, X } from 'lucide-react'
-import { externalProps, type ContactLink } from './contacts'
+import { Award, BadgeCheck, FolderKanban, Mail } from 'lucide-react'
 
-export interface NavLink {
-  label: string
-  href: string
-}
+export type MainPage = 'projects' | 'certifications' | 'achievements' | 'contact'
 
-export default function Header({ name, links, contacts }: { name: string; links: NavLink[]; contacts: ContactLink[] }) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
+const links = [
+  { id: 'projects', label: 'Projects', href: '#projects', icon: FolderKanban },
+  { id: 'certifications', label: 'Certifications', href: '#certifications', icon: BadgeCheck },
+  { id: 'achievements', label: 'Achievements', href: '#achievements', icon: Award },
+  { id: 'contact', label: 'Contact', href: '#contact', icon: Mail },
+] as const
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
+export default function Header({ name, activePage }: { name: string; activePage: MainPage }) {
   return (
-    <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled || isOpen ? 'border-b border-border bg-background/95 shadow-sm backdrop-blur-md' : 'bg-transparent'
-      }`}
-    >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-4">
-          <a href="#hero" className="heading-font truncate text-xl font-bold text-foreground">
-            {name}
-          </a>
-
-          <div className="flex items-center gap-1">
-            <nav className="hidden items-center gap-1 xl:flex">
-              {links.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </nav>
-
-            {/* Contact icons stay in the header so they're always one click away. */}
-            {contacts.length > 0 && (
-              <div className="hidden items-center gap-0.5 sm:flex xl:ml-2 xl:border-l xl:border-border xl:pl-3">
-                {contacts.map((c) => (
-                  <a
-                    key={c.label}
-                    href={c.href}
-                    {...externalProps(c)}
-                    aria-label={c.label}
-                    title={c.label}
-                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-primary"
-                  >
-                    <c.icon className="h-5 w-5" />
-                  </a>
-                ))}
-              </div>
-            )}
-
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-lg p-2 text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground xl:hidden"
-              aria-label={isOpen ? 'Close menu' : 'Open menu'}
-              aria-expanded={isOpen}
+    <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
+        <a href="#projects" data-page-link aria-label={name + ' — Projects'} className="group inline-flex min-w-0 items-center gap-3 focus-visible:rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+          <img src="/profile.jpg" alt="" width="36" height="36" className="h-9 w-9 shrink-0 rounded-full border border-border object-cover" />
+          <span className="heading-font hidden truncate text-base font-semibold text-foreground group-hover:text-primary lg:block">{name}</span>
+          <span className="heading-font truncate text-base font-semibold text-foreground lg:hidden">DMB</span>
+        </a>
+        <nav aria-label="Main navigation" className="hidden items-center gap-1 sm:flex">
+          {links.map(({ id, label, href, icon: Icon }) => (
+            <a
+              key={id}
+              href={href}
+              data-page-link
+              aria-current={activePage === id ? 'page' : undefined}
+              className={`inline-flex h-16 items-center gap-2 border-b-2 px-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary md:px-4 ${activePage === id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
             >
-              {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
-          </div>
-        </div>
+              <Icon className="hidden h-4 w-4 md:block" />
+              {label}
+            </a>
+          ))}
+        </nav>
       </div>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.nav
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-            className="space-y-1 overflow-hidden px-4 pb-4 xl:hidden"
+      <nav aria-label="Main navigation" className="grid grid-cols-4 border-t border-border px-1 sm:hidden">
+        {links.map(({ id, label, href }) => (
+          <a
+            key={id}
+            href={href}
+            data-page-link
+            aria-current={activePage === id ? 'page' : undefined}
+            className={`relative flex min-h-12 items-center justify-center px-0.5 text-[11px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-primary ${activePage === id ? 'text-primary after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            {links.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setIsOpen(false)}
-                className="block rounded-lg px-4 py-3 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground"
-              >
-                {link.label}
-              </a>
-            ))}
-            {contacts.length > 0 && (
-              <div className="flex flex-wrap gap-2 border-t border-border px-2 pt-3 sm:hidden">
-                {contacts.map((c) => (
-                  <a
-                    key={c.label}
-                    href={c.href}
-                    {...externalProps(c)}
-                    className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    <c.icon className="h-4 w-4" />
-                    {c.label}
-                  </a>
-                ))}
-              </div>
-            )}
-          </motion.nav>
-        )}
-      </AnimatePresence>
+            {label}
+          </a>
+        ))}
+      </nav>
     </header>
   )
 }

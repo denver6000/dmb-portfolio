@@ -26,6 +26,16 @@ export type EmploymentType = (typeof EMPLOYMENT_TYPES)[number]
 export const PROJECT_CATEGORIES = ['featured', 'personal'] as const
 export type ProjectCategory = (typeof PROJECT_CATEGORIES)[number]
 
+export const PROJECT_TYPES = ['websites', 'android-app', 'games', 'ai-integrations', 'misc'] as const
+export type ProjectType = (typeof PROJECT_TYPES)[number]
+export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
+  websites: 'Websites',
+  'android-app': 'Android App',
+  games: 'Games',
+  'ai-integrations': 'AI Integrations',
+  misc: 'Misc',
+}
+
 // Fields every content entry has.
 export interface EntryMeta {
   id: string
@@ -65,13 +75,16 @@ export interface Experience extends EntryMeta {
 
 export interface Project extends EntryMeta {
   title: string
-  category: ProjectCategory
+  category?: ProjectCategory // legacy featured/personal value
+  projectType?: ProjectType // older entries without a type appear under Misc
   period?: string // free-form label, e.g. "2023-2025" or "Recent"
   summary: string
   description?: string
   tags: string[]
+  screenshots?: string[] // image URLs or root-relative paths, in display order
   private: boolean // shows "Private/Client-Restricted"
   liveUrl?: string
+  promoUrl?: string
   repoUrl?: string
   docsUrl?: string
   order: number

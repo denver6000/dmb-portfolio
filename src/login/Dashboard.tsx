@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { getProfile } from '../lib/content'
 import { PROFILE_FIELDS, SECTION_ORDER, SECTIONS, type FieldDef, type SectionDef } from '../lib/sections'
-import type { EntryMeta, SectionId } from '../lib/types'
+import { PROJECT_TYPE_LABELS, type EntryMeta, type ProjectType, type SectionId } from '../lib/types'
 import { createEntry, deleteEntry, listAll, saveProfile, updateEntry } from './admin-data'
 import { fromForm, toForm, type FormValues } from './form'
 
@@ -198,7 +198,7 @@ function Field({ field: f, value, onChange }: { field: FieldDef; value: string; 
         <select {...common} className="input capitalize">
           {f.options?.map((o) => (
             <option key={o} value={o}>
-              {o.replace('-', ' ')}
+              {f.optionLabels?.[o] ?? o.replace('-', ' ')}
             </option>
           ))}
         </select>
@@ -364,7 +364,7 @@ function SectionEditor({ section }: { section: SectionDef }) {
                 )}
               </div>
               <p className="truncate text-sm text-muted-foreground capitalize">
-                {subKey === 'order' ? `Order ${String(e[subKey])}` : String(e[subKey] ?? '')}
+                {subKey === 'order' ? `Order ${String(e[subKey])}` : subKey === 'projectType' ? PROJECT_TYPE_LABELS[(e[subKey] as ProjectType) ?? 'misc'] : String(e[subKey] ?? '')}
               </p>
             </div>
             <div className="flex shrink-0 gap-1">

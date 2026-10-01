@@ -27,11 +27,11 @@ works inside, and what to watch out for.
 | [scripts/peeker-check.mjs](../../../scripts/peeker-check.mjs) | Headless-browser behaviour check (`npm run check:peeker`). |
 
 **Where it's wired into the site:**
-- **Stage:** [Portfolio.tsx](../../portfolio/Portfolio.tsx) mounts `<PeekerStage critters={[clawd, codex]} viewportTop={64} />`. `64` is the fixed header's height.
+- **Stage:** [Portfolio.tsx](../../portfolio/Portfolio.tsx) mounts one stage for the active view with `viewportTop={112}`. Its layer stays below the app bar.
 - **Hideouts** (`data-peeker-hideout`):
-  - the hero Location/Focus/Email card, with `="home"`, in [Hero.tsx](../../portfolio/Hero.tsx)
-  - the skill cards in `Portfolio.tsx`
-  - every timeline card in [TimelineItem.tsx](../../portfolio/TimelineItem.tsx)
+  - the contact email card in [ContactPage.tsx](../../portfolio/ContactPage.tsx)
+  - the achievement cards in [AchievementsPage.tsx](../../portfolio/AchievementsPage.tsx)
+  - gallery cards and the project detail image in [ProjectGallery.tsx](../../portfolio/ProjectGallery.tsx)
 - **Eye colour:** `--peeker-eye` in [index.css](../../index.css) is set to the page background, so Clawd's eyes look like holes.
 - The admin page (`/login`) doesn't use it.
 
@@ -78,7 +78,7 @@ are the way they are.
 
 ## How it works
 
-**One fixed layer.** `PeekerStage` renders a `position: fixed; inset: 0` layer, z-index 60,
+**One fixed layer.** `PeekerStage` renders a `position: fixed; inset: 0` layer, z-index 40 on this site,
 with `clip-path: inset(viewportTop 0 0 0)` so nothing is ever drawn over the header. Every
 critter lives in it.
 

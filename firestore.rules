@@ -60,13 +60,15 @@ rules_version = '2';
 //
 // Collection: projects    (public order: order asc)
 //   - title: string (required, 1-120)
-//   - category: string (required, 'featured' | 'personal')
+//   - category: string (optional legacy, 'featured' | 'personal')
+//   - projectType: string (optional for old entries, websites/android-app/games/ai-integrations/misc)
 //   - period: string (optional, 1-30) - display label, e.g. "2023-2025"
 //   - summary: string (required, 1-500)
 //   - description: string (optional, 1-5000)
 //   - tags: list<string> (required, <= 20 items, each 1-40)
+//   - screenshots: list<string> (optional, <= 20 image URLs or root-relative paths, each <= 500)
 //   - private: bool (required) - shows "Private/Client-Restricted"
-//   - liveUrl / repoUrl / docsUrl: string (optional, http(s) URL, <= 500)
+//   - liveUrl / promoUrl / repoUrl / docsUrl: string (optional, http(s) URL, <= 500)
 //   - order: int (required, 0-10000)
 //
 // Collection: competitions (public order: startYear desc)
@@ -159,6 +161,21 @@ service cloud.firestore {
         strAt(l, 16, maxLen) && strAt(l, 17, maxLen) && strAt(l, 18, maxLen) && strAt(l, 19, maxLen);
     }
 
+    function imageUrlAt(l, i) {
+      return l.size() <= i ||
+        (l[i] is string && l[i].size() <= 500 &&
+          (l[i].matches('^https?://[^ ]+$') || l[i].matches('^/[^/][^ ]*$')));
+    }
+
+    function isImageUrlList(l) {
+      return l is list && l.size() <= 20 &&
+        imageUrlAt(l, 0) && imageUrlAt(l, 1) && imageUrlAt(l, 2) && imageUrlAt(l, 3) &&
+        imageUrlAt(l, 4) && imageUrlAt(l, 5) && imageUrlAt(l, 6) && imageUrlAt(l, 7) &&
+        imageUrlAt(l, 8) && imageUrlAt(l, 9) && imageUrlAt(l, 10) && imageUrlAt(l, 11) &&
+        imageUrlAt(l, 12) && imageUrlAt(l, 13) && imageUrlAt(l, 14) && imageUrlAt(l, 15) &&
+        imageUrlAt(l, 16) && imageUrlAt(l, 17) && imageUrlAt(l, 18) && imageUrlAt(l, 19);
+    }
+
 
     // Shared by every content collection.
     function isValidMeta(data) {
@@ -233,16 +250,19 @@ service cloud.firestore {
     }
 
     function isValidProject(data) {
-      return hasRequiredFields(['title', 'category', 'summary', 'tags', 'private', 'order', 'published', 'createdAt', 'updatedAt']) &&
-        hasOnlyAllowedFields(['title', 'category', 'period', 'summary', 'description', 'tags', 'private', 'liveUrl', 'repoUrl', 'docsUrl', 'order', 'published', 'createdAt', 'updatedAt']) &&
+      return hasRequiredFields(['title', 'summary', 'tags', 'private', 'order', 'published', 'createdAt', 'updatedAt']) &&
+        hasOnlyAllowedFields(['title', 'category', 'projectType', 'period', 'summary', 'description', 'screenshots', 'tags', 'private', 'liveUrl', 'promoUrl', 'repoUrl', 'docsUrl', 'order', 'published', 'createdAt', 'updatedAt']) &&
         isStr(data.title, 1, 120) &&
-        data.category in ['featured', 'personal'] &&
+        (!('category' in data) || data.category in ['featured', 'personal']) &&
+        (!('projectType' in data) || data.projectType in ['websites', 'android-app', 'games', 'ai-integrations', 'misc']) &&
         optStr(data, 'period', 1, 30) &&
         isStr(data.summary, 1, 500) &&
         optStr(data, 'description', 1, 5000) &&
+        (!('screenshots' in data) || isImageUrlList(data.screenshots)) &&
         isStrList(data.tags, 40) &&
         data.private is bool &&
         optUrl(data, 'liveUrl') &&
+        optUrl(data, 'promoUrl') &&
         optUrl(data, 'repoUrl') &&
         optUrl(data, 'docsUrl') &&
         data.order is int && data.order >= 0 && data.order <= 10000 &&

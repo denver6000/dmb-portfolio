@@ -2,9 +2,15 @@
 
 Vite + React + TypeScript portfolio backed by Firebase (project `dmb-portfolio`).
 
-- **`/`**: public, read-only portfolio (design copied from `../laravel-portfolio`). Contact links
-  (GitHub, LinkedIn, Gmail, Facebook) sit at the top and stay in the header, followed by Skills,
-  Projects, Work Experience, Education, Competitions and Certifications. It never loads Firebase Auth.
+The public avatar is `public/profile.jpg`; replace that file to change the photo shown
+in the app bar and Contact page.
+
+- **`/`**: public, read-only portfolio with a top app bar for Projects, Certifications,
+  Achievements, and Contact. Projects can be filtered by Websites, Android App, Games,
+  AI Integrations, and Misc. Achievements contains recognition, experience, education, and skills. Each
+  view has a shareable hash URL (for example `/#projects` or `/#achievements/skills`).
+  Projects open into a screenshot and description view at `/#projects/<id>`.
+  The public page never loads Firebase Auth.
 - **`/login`**: hidden admin page (`noindex`). You sign in with Google and edit everything there.
   Only the registered owner gets in; anyone else is signed straight back out.
 
@@ -27,15 +33,21 @@ validates the same limits.
 
 | Collection | Public order | Key fields |
 | --- | --- | --- |
-| `profile/main` | n/a | name, headline, location, focus, email (Gmail), GitHub/LinkedIn/Facebook/résumé URLs, hero image |
+| `profile/main` | n/a | name, headline, location, focus, email (Gmail), GitHub/LinkedIn/Facebook/résumé URLs |
 | `skills` | display order | category, items (one per line) |
-| `projects` | display order | title, category (featured/personal), period label, summary, details, tags, live/repo/docs URLs, private flag |
+| `projects` | display order within type | title, project type, period label, summary, details, screenshot URLs, tags, live/promotional/repo/docs URLs, private flag |
 | `education` | start year, newest first | degree, school, field of study, startYear, endYear (blank = present), highlights |
 | `experience` | start date, newest first | role, company, employment type, start/end month (blank end = present), highlights, tags |
 | `competitions` | year, newest first | title/placement, event, year, until-year (multi-year titles), description, link |
 | `certifications` | issue date, newest first | name, issuer, issue/expiry month, credential ID and URL |
 
 Every entry has a `published` flag. Drafts are only visible to the owner.
+
+Project screenshots are optional and ordered. In the admin editor, enter one image URL per
+line, or a root-relative path such as `/projects/my-app.png` for a file placed at
+`public/projects/my-app.png`. Existing projects without screenshots show a preview
+placeholder. Older projects without a type appear under Misc. The Firestore rule change
+in this repo must be deployed before saving entries with screenshots or a project type.
 
 ## Dev-only helpers
 
@@ -44,8 +56,8 @@ These exist only under `npm run dev` and are stripped from production builds:
 - `http://localhost:5173/?demo` previews the public page with the starter content
   (`src/dev/starterContent.ts`, taken from the laravel-portfolio concept) without touching Firestore.
 - In `/login`, **Import starter content** writes that content into every empty section. Work
-  experience is imported as drafts with January placeholder months, so check the dates before
-  publishing.
+  entries with confirmed month ranges are published; older approximate entries remain drafts
+  for review.
 
 Deploy rule or index changes with:
 

@@ -1,17 +1,17 @@
 @import 'tailwindcss';
 
-/* Design tokens from the laravel-portfolio concept (dark theme). */
+/* Warm editorial palette for the public portfolio and admin surfaces. */
 @theme {
-  --color-background: hsl(220 13% 9%);
-  --color-foreground: hsl(220 13% 95%);
-  --color-card: hsl(220 13% 14%);
-  --color-card-foreground: hsl(220 13% 95%);
-  --color-primary: hsl(210 100% 50%);
-  --color-primary-foreground: hsl(0 0% 100%);
-  --color-muted: hsl(220 13% 16%);
-  --color-muted-foreground: hsl(220 10% 65%);
-  --color-border: hsl(220 13% 20%);
-  --color-destructive: hsl(0 84% 60%);
+  --color-background: #f6f2ea;
+  --color-foreground: #20252b;
+  --color-card: #fcfaf5;
+  --color-card-foreground: #20252b;
+  --color-primary: #a5452c;
+  --color-primary-foreground: #ffffff;
+  --color-muted: #ebe6dd;
+  --color-muted-foreground: #5b605f;
+  --color-border: #d8d1c7;
+  --color-destructive: #b72f33;
 
   --font-sans: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
   --font-heading: 'Outfit', ui-sans-serif, system-ui, sans-serif;
@@ -24,7 +24,7 @@
   }
 
   html {
-    color-scheme: dark;
+    color-scheme: light;
     scroll-behavior: smooth;
   }
 
@@ -89,8 +89,24 @@
     @apply inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-all duration-200 hover:bg-primary/20;
   }
 
+  .gallery-arrow {
+    @apply inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:border-primary/50 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary;
+  }
+
+  .hide-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Admin form controls. */
   .input {
     @apply w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 transition-colors focus:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/20;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
 }

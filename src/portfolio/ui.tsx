@@ -33,7 +33,7 @@ export function SectionHeading({ title, eyebrow, icon: Icon }: { title: string; 
 // Alternating section backgrounds, as in the concept.
 export function Section({ id, muted, children }: { id: string; muted?: boolean; children: ReactNode }) {
   return (
-    <section id={id} className={`py-20 ${muted ? 'bg-muted/30' : 'bg-background'}`}>
+    <section id={id} className={`min-h-[calc(100vh-64px)] pb-20 pt-28 ${muted ? 'bg-muted/30' : 'bg-background'}`}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>
     </section>
   )
