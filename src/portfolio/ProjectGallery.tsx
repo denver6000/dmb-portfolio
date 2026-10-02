@@ -87,6 +87,14 @@ export default function ProjectGallery({
                 {project.title}<ArrowRight aria-hidden="true" className="mt-2 h-4 w-4 shrink-0 opacity-50 transition-transform group-hover:translate-x-1 group-hover:opacity-100" />
               </a>
             </h2>
+            {project.collaboratorName && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Development partner:{' '}
+                {project.collaboratorUrl ? (
+                  <a href={project.collaboratorUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-4 hover:text-foreground">{project.collaboratorName}</a>
+                ) : <span className="font-medium text-foreground">{project.collaboratorName}</span>}
+              </p>
+            )}
             {(project.repoUrl || project.liveUrl || project.promoUrl || project.docsUrl) && <div className="mt-5 flex flex-wrap gap-x-5 gap-y-3 border-t border-border pt-4 text-sm" aria-label={`${project.title} links`}>
               {project.repoUrl && <a href={project.repoUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-primary focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-primary"><GitFork aria-hidden="true" className="h-4 w-4" />GitHub</a>}
               {project.liveUrl && <a href={project.liveUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-primary focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-primary"><Globe2 aria-hidden="true" className="h-4 w-4" />Live Site</a>}
@@ -163,7 +171,7 @@ function ProjectDetail({ project }: { project: Project }) {
           <p className="mt-5 text-base leading-relaxed text-foreground/90">{project.summary}</p>
           {project.collaboratorName && (
             <p className="mt-4 text-sm text-muted-foreground">
-              In collaboration with{' '}
+              Developed in partnership with{' '}
               {project.collaboratorUrl ? (
                 <a href={project.collaboratorUrl} target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-4 hover:text-foreground">{project.collaboratorName}</a>
               ) : <span className="font-medium text-foreground">{project.collaboratorName}</span>}
