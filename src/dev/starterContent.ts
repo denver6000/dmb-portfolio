@@ -153,6 +153,7 @@ export const starterContent: { [K in SectionId]: Starter<K>[] } = {
       tags: [],
       private: false,
       liveUrl: 'https://angbagongbayan-463.masoniclodge.ph/',
+      screenshots: ['/projects/masonic-lodge-site.png'],
       order: 7,
       published: true,
     },
