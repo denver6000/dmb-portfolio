@@ -157,6 +157,19 @@ export const starterContent: { [K in SectionId]: Starter<K>[] } = {
       order: 7,
       published: true,
     },
+    {
+      title: 'Multi-Role Browser',
+      projectType: 'ai-integrations',
+      period: '2026',
+      summary: 'A Model Context Protocol server that lets AI agents drive several logged-in browser identities, such as an admin and a regular user, side by side.',
+      description: 'Built with TypeScript and Playwright. Each actor gets its own isolated browser context with separate cookies, storage and login, all sharing one Chromium. Agents use it to check that each role can only do what it should, and that changes made by one role show up for another. Published on npm as multi-role-browser.',
+      tags: ['MCP', 'TypeScript', 'Playwright', 'Browser Automation'],
+      private: false,
+      repoUrl: 'https://github.com/denver6000/denver6000-multi-role-browser',
+      docsUrl: 'https://github.com/denver6000/denver6000-multi-role-browser#readme',
+      order: 8,
+      published: true,
+    },
   ],
   education: [
     {
