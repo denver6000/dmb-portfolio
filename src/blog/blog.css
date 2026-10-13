@@ -1,0 +1,103 @@
+/* Blog extras rendered by src/blog/render.ts: code blocks, terminal, file tree,
+   callouts, code notes and diagrams. Imported from src/index.css. */
+@layer components {
+  .doc-prose {
+    --code-bg: #1d2126;
+    --code-head: #262b31;
+    --code-fg: #e9e4da;
+    --code-dim: #8a8f8b;
+    --code-line-hl: rgb(165 69 44 / 0.22);
+    --role-admin: var(--color-primary);
+    --role-user: #2f6f73;
+  }
+
+  .code-block { @apply overflow-hidden rounded-xl border border-[#2f353c] shadow-lg shadow-black/10; background: var(--code-bg); color: var(--code-fg); }
+  .code-head { @apply flex items-center gap-3 border-b border-white/5 px-4 py-2 text-xs; background: var(--code-head); color: var(--code-dim); }
+  .code-dots { @apply flex gap-1.5; }
+  .code-dots i { @apply block h-2.5 w-2.5 rounded-full bg-white/15; }
+  .code-title { @apply min-w-0 flex-1 truncate font-medium text-[#d9d3c7]; font-family: var(--font-mono); }
+  .code-lang { @apply rounded border border-white/10 px-1.5 py-0.5 text-[10px] tracking-wider uppercase; }
+  .code-copy { @apply rounded-md border border-white/10 px-2 py-0.5 text-[11px] font-medium text-[#d9d3c7] transition-colors hover:border-white/30 hover:text-white focus-visible:outline-2 focus-visible:outline-primary; }
+  .code-block pre { @apply overflow-x-auto py-3 text-[13px] leading-6; font-variant-ligatures: none; }
+  .code-block pre code { @apply grid min-w-full; width: max-content; }
+  .code-line { @apply grid min-h-6 items-start pr-4; grid-template-columns: auto 1fr auto; border-left: 3px solid transparent; }
+  .code-line.is-hl { background: var(--code-line-hl); border-left-color: var(--color-primary); }
+  .code-line .ln { @apply w-12 pr-4 text-right text-xs leading-6 select-none; color: #5d635f; }
+  .code-line.is-hl .ln { color: #e8a07c; }
+  .code-line .lc { @apply pl-1 whitespace-pre; }
+  .code-terminal .code-line .lc { @apply pl-4; }
+  .code-marker { @apply ml-4 inline-flex h-5 w-5 items-center justify-center self-center rounded-full bg-primary text-[11px] font-bold text-white transition-transform select-none; font-family: var(--font-sans); }
+  .code-marker.is-active { @apply scale-125 ring-2 ring-white/70; }
+
+  .term-prompt { color: #e8a07c; }
+  .term-cmd { @apply font-medium text-white; }
+  .term-out { color: #b9b4aa; }
+
+  .code-tree .tree { @apply m-0 list-none p-3 text-[13px] leading-7; font-family: var(--font-mono); }
+  .code-tree .tree-row { @apply flex items-center gap-2 rounded-md pr-3; padding-left: calc(var(--depth) * 1.25rem + 0.5rem); margin-top: 0; }
+  .tree-row.is-hl { background: var(--code-line-hl); }
+  .tree-row.is-hl .tree-name { @apply font-semibold text-white; }
+  .tree-icon svg { @apply h-4 w-4 fill-none stroke-current; stroke-width: 1.2; }
+  .tree-icon { color: var(--code-dim); }
+  .tree-icon.is-folder { color: #e6b673; }
+  .tree-name { @apply whitespace-nowrap; }
+  .tree-comment { @apply ml-auto hidden pl-6 text-xs italic sm:inline; color: var(--code-dim); font-family: var(--font-sans); }
+
+  /* highlight.js tokens, warm palette to match the site. */
+  .hljs-comment, .hljs-quote { @apply italic; color: #868b87; }
+  .hljs-keyword, .hljs-selector-tag { color: #ec9a76; }
+  .hljs-string, .hljs-template-tag, .hljs-regexp { color: #b9cc8e; }
+  .hljs-title, .hljs-section { color: #f0c674; }
+  .hljs-title.class_, .hljs-type, .hljs-built_in { color: #8fc5c9; }
+  .hljs-number, .hljs-literal, .hljs-symbol { color: #e6b673; }
+  .hljs-attr, .hljs-property, .hljs-variable, .hljs-params { color: #e9dcc6; }
+  .hljs-subst { color: var(--code-fg); }
+  .hljs-meta { color: #a9a39a; }
+
+  /* ::: notes, explaining the numbered markers in the code block above. */
+  .doc-prose .code-notes { margin-top: 0.75rem; }
+  .doc-prose .code-notes ol { @apply list-none space-y-1 pl-0 text-[0.95rem] leading-7; counter-reset: note; }
+  .doc-prose .code-notes li { @apply relative mt-0 rounded-lg py-1 pr-2 pl-10 transition-colors hover:bg-muted/60; counter-increment: note; }
+  .code-notes li::before { @apply absolute top-2 left-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white; content: counter(note); }
+
+  /* ::: note / tip / warning / verified */
+  .callout { @apply rounded-xl border px-5 py-4 text-[0.975rem] leading-7; border-color: var(--color-border); background: var(--color-card); }
+  .callout > * + * { margin-top: 0.5rem; }
+  .callout-title { @apply flex items-center gap-2 text-xs font-bold tracking-[0.15em] uppercase; }
+  .callout-title::before { @apply inline-block h-2 w-2 rounded-full; content: ''; background: currentColor; }
+  .callout-note .callout-title { color: var(--color-muted-foreground); }
+  .callout-tip, .callout-verified { border-color: rgb(47 111 115 / 0.35); background: rgb(47 111 115 / 0.06); }
+  .callout-tip .callout-title, .callout-verified .callout-title { color: var(--role-user); }
+  .callout-warning { border-color: rgb(165 69 44 / 0.35); background: rgb(165 69 44 / 0.06); }
+  .callout-warning .callout-title { color: var(--color-primary); }
+
+  /* ::: diagram, inline SVGs from src/blog/diagrams styled by class. */
+  .doc-prose .doc-diagram { @apply my-8 rounded-2xl border border-border bg-card p-4 sm:p-6; }
+  .diagram-scroll { @apply overflow-x-auto; }
+  .diagram-scroll svg { @apply mx-auto block h-auto w-full; min-width: 600px; font-family: var(--font-sans); }
+  .doc-diagram figcaption { @apply mt-4 text-center text-sm leading-6 text-muted-foreground; }
+  .doc-diagram .d-box { fill: var(--color-background); stroke: var(--color-border); stroke-width: 1.5; }
+  .doc-diagram .d-box-strong { fill: var(--color-card); stroke: var(--color-foreground); stroke-width: 1.5; }
+  .doc-diagram .d-box-dark { fill: #20252b; }
+  .doc-diagram .d-admin { fill: rgb(165 69 44 / 0.08); stroke: var(--role-admin); stroke-width: 1.5; }
+  .doc-diagram .d-user { fill: rgb(47 111 115 / 0.08); stroke: var(--role-user); stroke-width: 1.5; }
+  .doc-diagram .d-chip { fill: var(--color-card); stroke: var(--color-border); }
+  .doc-diagram .d-group { fill: none; stroke: var(--color-muted-foreground); stroke-width: 1.2; stroke-dasharray: 5 4; }
+  .doc-diagram .d-title { fill: var(--color-foreground); font-size: 14px; font-weight: 600; }
+  .doc-diagram .d-label { fill: var(--color-foreground); font-size: 13px; }
+  .doc-diagram .d-sub { fill: var(--color-muted-foreground); font-size: 12px; }
+  .doc-diagram .d-mono { fill: var(--color-foreground); font-size: 12px; font-family: var(--font-mono); }
+  .doc-diagram .d-light { fill: #f6f2ea; }
+  .doc-diagram .d-light-sub { fill: #b9b4aa; font-size: 12px; }
+  .doc-diagram .t-admin { fill: var(--role-admin); }
+  .doc-diagram .t-user { fill: var(--role-user); }
+  .doc-diagram .d-edge { fill: none; stroke: var(--color-muted-foreground); stroke-width: 1.5; }
+  .doc-diagram .d-edge-admin { fill: none; stroke: var(--role-admin); stroke-width: 1.75; }
+  .doc-diagram .d-edge-user { fill: none; stroke: var(--role-user); stroke-width: 1.75; }
+  .doc-diagram .d-dash { stroke-dasharray: 5 4; }
+  .doc-diagram .d-arrow { fill: var(--color-muted-foreground); }
+  .doc-diagram .d-arrow-admin { fill: var(--role-admin); }
+  .doc-diagram .d-arrow-user { fill: var(--role-user); }
+  .doc-diagram .d-lifeline { stroke: var(--color-border); stroke-width: 1.5; stroke-dasharray: 4 4; }
+  .doc-diagram .d-bad { fill: var(--color-destructive); }
+}

@@ -1,0 +1,56 @@
+<svg viewBox="0 0 720 500" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mrb-seq-title">
+  <title id="mrb-seq-title">Sequence of the demo: the agent logs in as admin and as user through the real form, each context gets its own session cookie, then admin opens the admin panel and gets 200 while user opens /admin directly and gets 403 Forbidden.</title>
+  <defs>
+    <marker id="mrb-seq-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="d-arrow"/></marker>
+    <marker id="mrb-seq-admin" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="d-arrow-admin"/></marker>
+    <marker id="mrb-seq-user" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="d-arrow-user"/></marker>
+    <marker id="mrb-seq-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" class="d-bad"/></marker>
+  </defs>
+
+  <!-- Participants -->
+  <rect x="20" y="16" width="120" height="40" rx="10" class="d-box-dark"/>
+  <text x="80" y="41" text-anchor="middle" class="d-label d-light" font-weight="600">Agent</text>
+  <rect x="220" y="16" width="120" height="40" rx="10" class="d-admin"/>
+  <text x="280" y="41" text-anchor="middle" class="d-label t-admin" font-weight="600">admin context</text>
+  <rect x="400" y="16" width="120" height="40" rx="10" class="d-user"/>
+  <text x="460" y="41" text-anchor="middle" class="d-label t-user" font-weight="600">user context</text>
+  <rect x="580" y="16" width="120" height="40" rx="10" class="d-box-strong"/>
+  <text x="640" y="41" text-anchor="middle" class="d-mono">localhost:3000</text>
+
+  <line x1="80" y1="56" x2="80" y2="488" class="d-lifeline"/>
+  <line x1="280" y1="56" x2="280" y2="488" class="d-lifeline"/>
+  <line x1="460" y1="56" x2="460" y2="488" class="d-lifeline"/>
+  <line x1="640" y1="56" x2="640" y2="488" class="d-lifeline"/>
+
+  <!-- Phase 1: log in both roles -->
+  <text x="96" y="86" class="d-sub" font-weight="600">1 · Log in both roles</text>
+  <line x1="80" y1="112" x2="276" y2="112" class="d-edge-admin" marker-end="url(#mrb-seq-admin)"/>
+  <text x="178" y="104" text-anchor="middle" class="d-sub">open /login, fill, click</text>
+  <line x1="280" y1="138" x2="636" y2="138" class="d-edge-admin" marker-end="url(#mrb-seq-admin)"/>
+  <text x="460" y="131" text-anchor="middle" class="d-mono">POST /login</text>
+  <line x1="640" y1="162" x2="284" y2="162" class="d-edge-admin d-dash" marker-end="url(#mrb-seq-admin)"/>
+  <text x="460" y="155" text-anchor="middle" class="d-sub">Set-Cookie: sid (admin's session)</text>
+
+  <line x1="80" y1="200" x2="456" y2="200" class="d-edge-user" marker-end="url(#mrb-seq-user)"/>
+  <text x="178" y="192" text-anchor="middle" class="d-sub">same steps, as user</text>
+  <line x1="460" y1="226" x2="636" y2="226" class="d-edge-user" marker-end="url(#mrb-seq-user)"/>
+  <text x="550" y="219" text-anchor="middle" class="d-mono">POST /login</text>
+  <line x1="640" y1="250" x2="464" y2="250" class="d-edge-user d-dash" marker-end="url(#mrb-seq-user)"/>
+  <text x="550" y="243" text-anchor="middle" class="d-sub">sid (user's session)</text>
+
+  <!-- Phase 2: try the admin page -->
+  <text x="96" y="296" class="d-sub" font-weight="600">2 · Try the admin page</text>
+  <line x1="80" y1="326" x2="276" y2="326" class="d-edge-admin" marker-end="url(#mrb-seq-admin)"/>
+  <text x="178" y="318" text-anchor="middle" class="d-sub">click "Admin panel"</text>
+  <line x1="280" y1="350" x2="636" y2="350" class="d-edge-admin" marker-end="url(#mrb-seq-admin)"/>
+  <text x="460" y="343" text-anchor="middle" class="d-mono">GET /admin</text>
+  <line x1="640" y1="374" x2="284" y2="374" class="d-edge-admin d-dash" marker-end="url(#mrb-seq-admin)"/>
+  <text x="460" y="367" text-anchor="middle" class="d-label">200 · Admin panel</text>
+
+  <line x1="80" y1="414" x2="456" y2="414" class="d-edge-user" marker-end="url(#mrb-seq-user)"/>
+  <text x="178" y="406" text-anchor="middle" class="d-sub">open /admin directly</text>
+  <line x1="460" y1="440" x2="636" y2="440" class="d-edge-user" marker-end="url(#mrb-seq-user)"/>
+  <text x="550" y="433" text-anchor="middle" class="d-mono">GET /admin</text>
+  <line x1="640" y1="466" x2="464" y2="466" class="d-edge-user d-dash" marker-end="url(#mrb-seq-bad)"/>
+  <text x="550" y="459" text-anchor="middle" class="d-label d-bad" font-weight="600">403 · Forbidden</text>
+</svg>

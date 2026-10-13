@@ -49,6 +49,31 @@ line, or a root-relative path such as `/projects/my-app.png` for a file placed a
 placeholder. Older projects without a type appear under Misc. The Firestore rule change
 in this repo must be deployed before saving entries with screenshots or a project type.
 
+## Blog
+
+`/#blog` lists post series; each post opens in a docs layout (series sidebar, article,
+"On this page" contents, previous/next links) at `/#blog/<series>/<slug>`.
+
+Posts are Markdown files in the repo, not Firestore entries:
+
+```
+src/blog/posts/<series-id>/<NN>-<slug>.md
+```
+
+- `NN-` sets the reading order and is dropped from the URL.
+- Frontmatter: `title`, `summary`, `date` (YYYY-MM-DD), and optional `draft: true`.
+  Drafts show (with a Draft badge) only under `npm run dev`; production builds leave
+  them out, including their text.
+- Register each series (title, summary, repo/docs links) in `SERIES` in `src/blog/posts.ts`.
+- Put post images in `public/blog/` and reference them as `/blog/<file>`.
+- Posts support a few extras on top of Markdown (full syntax at the top of `src/blog/render.ts`):
+  code fences with `title="file.ts" start=23 {2,5-7}` and `// [!1]` markers explained by a
+  following `::: notes` list; `terminal` and `tree` fences; `::: note|tip|warning|verified`
+  callouts; and `::: diagram <name>` to inline `src/blog/diagrams/<name>.svg` (style the SVG
+  with the `d-*` classes in `src/blog/blog.css`).
+- Link between posts with `#blog/<series>/<slug>`. Don't use `#heading` anchors: the hash
+  is the page route.
+
 ## Dev-only helpers
 
 These exist only under `npm run dev` and are stripped from production builds:

@@ -1,11 +1,12 @@
-import { Award, BadgeCheck, FolderKanban, Mail } from 'lucide-react'
+import { Award, BadgeCheck, FolderKanban, Mail, NotebookPen } from 'lucide-react'
 
-export type MainPage = 'projects' | 'certifications' | 'achievements' | 'contact'
+export type MainPage = 'projects' | 'certifications' | 'achievements' | 'blog' | 'contact'
 
 const links = [
   { id: 'projects', label: 'Projects', href: '#projects', icon: FolderKanban },
   { id: 'certifications', label: 'Certifications', href: '#certifications', icon: BadgeCheck },
   { id: 'achievements', label: 'Achievements', href: '#achievements', icon: Award },
+  { id: 'blog', label: 'Blog', href: '#blog', icon: NotebookPen },
   { id: 'contact', label: 'Contact', href: '#contact', icon: Mail },
 ] as const
 
@@ -33,14 +34,14 @@ export default function Header({ name, activePage }: { name: string; activePage:
           ))}
         </nav>
       </div>
-      <nav aria-label="Main navigation" className="grid grid-cols-4 border-t border-border px-1 sm:hidden">
+      <nav aria-label="Main navigation" className="hide-scrollbar flex justify-between overflow-x-auto border-t border-border px-1 sm:hidden">
         {links.map(({ id, label, href }) => (
           <a
             key={id}
             href={href}
             data-page-link
             aria-current={activePage === id ? 'page' : undefined}
-            className={`relative flex min-h-12 items-center justify-center px-0.5 text-[11px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-primary ${activePage === id ? 'text-primary after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`relative flex min-h-12 shrink-0 items-center justify-center px-2.5 text-[11px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-primary ${activePage === id ? 'text-primary after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary' : 'text-muted-foreground hover:text-foreground'}`}
           >
             {label}
           </a>

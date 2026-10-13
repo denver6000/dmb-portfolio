@@ -6,17 +6,19 @@ import { codex } from '../components/peeker/sprites/codex'
 import { getDemoContent, getProfile, getPublished } from '../lib/content'
 import type { Profile, SectionEntries, SectionId } from '../lib/types'
 import AchievementsPage, { type AchievementView } from './AchievementsPage'
+import BlogPage from './BlogPage'
 import CertificationsPage from './CertificationsPage'
 import ContactPage from './ContactPage'
 import Header, { type MainPage } from './Header'
 import ProjectGallery from './ProjectGallery'
 
 type Content = { profile: Profile | null } & { [K in SectionId]: SectionEntries[K][] }
-type Route = { page: MainPage; projectId?: string; achievementView?: AchievementView }
+type Route = { page: MainPage; projectId?: string; achievementView?: AchievementView; blogSeries?: string; blogSlug?: string }
 const pageTitles: Record<MainPage, string> = {
   projects: 'Projects',
   certifications: 'Certifications',
   achievements: 'Achievements',
+  blog: 'Blog',
   contact: 'Contact',
 }
 
@@ -34,6 +36,10 @@ function routeFromHash(): Route {
     if (['recognition', 'experience', 'education', 'skills'].includes(view)) {
       return { page: 'achievements', achievementView: view as AchievementView }
     }
+  }
+  if (hash === 'blog' || hash.startsWith('blog/')) {
+    const [blogSeries, blogSlug] = hash.split('/').slice(1)
+    return { page: 'blog', blogSeries, blogSlug }
   }
   if (hash === 'achievements') return { page: 'achievements' }
   if (hash === 'certifications') return { page: 'certifications' }
@@ -97,7 +103,9 @@ export default function Portfolio() {
     ? 'projects/' + (route.projectId ?? '')
     : route.page === 'achievements'
       ? 'achievements/' + (route.achievementView ?? '')
-      : route.page
+      : route.page === 'blog'
+        ? 'blog/' + (route.blogSeries ?? '') + '/' + (route.blogSlug ?? '')
+        : route.page
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -121,6 +129,7 @@ export default function Portfolio() {
                 skills={skills}
               />
             )}
+            {route.page === 'blog' && <BlogPage seriesId={route.blogSeries} slug={route.blogSlug} />}
             {route.page === 'certifications' && <CertificationsPage certifications={certifications} />}
             {route.page === 'contact' && <ContactPage profile={profile} />}
           </motion.div>

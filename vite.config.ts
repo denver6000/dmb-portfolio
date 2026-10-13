@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
@@ -22,8 +23,23 @@ const loginSlashRedirect: Plugin = {
   },
 }
 
+// Blog posts marked `draft: true` are hidden in production (src/blog/posts.ts);
+// blank them here too so their text never ships in the bundle.
+const stripBlogDrafts: Plugin = {
+  name: 'strip-blog-drafts',
+  apply: 'build',
+  enforce: 'pre',
+  load(id) {
+    const [file, query] = id.split('?')
+    if (!file.includes('/src/blog/posts/') || !file.endsWith('.md') || query !== 'raw') return
+    const raw = readFileSync(file, 'utf-8')
+    const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(raw)?.[1] ?? ''
+    if (/^draft:\s*true\b/m.test(frontmatter)) return 'export default ' + JSON.stringify('---\ndraft: true\n---\n')
+  },
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), loginSlashRedirect],
+  plugins: [react(), tailwindcss(), loginSlashRedirect, stripBlogDrafts],
   build: {
     rolldownOptions: {
       input: {

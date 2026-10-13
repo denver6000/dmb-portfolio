@@ -1,0 +1,45 @@
+<svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mrb-ctx-title">
+  <title id="mrb-ctx-title">Left: a single browser holds one identity, so switching roles means logging out and back in. Right: one browser with two contexts holds both identities at the same time.</title>
+  <defs>
+    <marker id="mrb-ctx-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" class="d-arrow"/></marker>
+  </defs>
+
+  <!-- Left: one browser, one identity -->
+  <text x="20" y="28" class="d-title">One browser, one identity</text>
+  <rect x="20" y="44" width="320" height="236" rx="12" class="d-box"/>
+  <rect x="20" y="44" width="320" height="30" rx="12" class="d-chip"/>
+  <circle cx="38" cy="59" r="4" class="d-arrow"/><circle cx="52" cy="59" r="4" class="d-arrow"/><circle cx="66" cy="59" r="4" class="d-arrow"/>
+  <text x="180" y="64" text-anchor="middle" class="d-sub">one cookie jar</text>
+
+  <rect x="44" y="98" width="110" height="36" rx="8" class="d-admin"/><text x="99" y="121" text-anchor="middle" class="d-label t-admin">admin</text>
+  <line x1="158" y1="116" x2="202" y2="116" class="d-edge" marker-end="url(#mrb-ctx-a)"/>
+  <rect x="206" y="98" width="110" height="36" rx="8" class="d-box"/><text x="261" y="121" text-anchor="middle" class="d-sub">log out</text>
+  <path d="M261 134 L261 152 L99 152 L99 168" class="d-edge" marker-end="url(#mrb-ctx-a)"/>
+  <rect x="44" y="172" width="110" height="36" rx="8" class="d-user"/><text x="99" y="195" text-anchor="middle" class="d-label t-user">user</text>
+  <line x1="158" y1="190" x2="202" y2="190" class="d-edge" marker-end="url(#mrb-ctx-a)"/>
+  <rect x="206" y="172" width="110" height="36" rx="8" class="d-box"/><text x="261" y="195" text-anchor="middle" class="d-sub">log out</text>
+  <text x="180" y="244" text-anchor="middle" class="d-sub">Each switch loses the other role's session,</text>
+  <text x="180" y="262" text-anchor="middle" class="d-sub">so the two can never be checked side by side.</text>
+
+  <!-- Right: one browser, a context per role -->
+  <text x="380" y="28" class="d-title">One browser, a context per role</text>
+  <rect x="380" y="44" width="320" height="236" rx="12" class="d-box"/>
+  <rect x="380" y="44" width="320" height="30" rx="12" class="d-chip"/>
+  <circle cx="398" cy="59" r="4" class="d-arrow"/><circle cx="412" cy="59" r="4" class="d-arrow"/><circle cx="426" cy="59" r="4" class="d-arrow"/>
+  <text x="540" y="64" text-anchor="middle" class="d-sub">browser.newContext() × 2</text>
+
+  <rect x="400" y="94" width="136" height="120" rx="10" class="d-admin"/>
+  <text x="468" y="120" text-anchor="middle" class="d-title t-admin">admin</text>
+  <text x="468" y="146" text-anchor="middle" class="d-sub">own cookies</text>
+  <text x="468" y="166" text-anchor="middle" class="d-sub">own storage</text>
+  <text x="468" y="194" text-anchor="middle" class="d-label">signed in</text>
+
+  <rect x="544" y="94" width="136" height="120" rx="10" class="d-user"/>
+  <text x="612" y="120" text-anchor="middle" class="d-title t-user">user</text>
+  <text x="612" y="146" text-anchor="middle" class="d-sub">own cookies</text>
+  <text x="612" y="166" text-anchor="middle" class="d-sub">own storage</text>
+  <text x="612" y="194" text-anchor="middle" class="d-label">signed in</text>
+
+  <text x="540" y="244" text-anchor="middle" class="d-sub">Both sessions stay alive, and the agent</text>
+  <text x="540" y="262" text-anchor="middle" class="d-sub">picks which one acts on every step.</text>
+</svg>

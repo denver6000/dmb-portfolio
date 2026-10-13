@@ -1,0 +1,56 @@
+<svg viewBox="0 0 720 460" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mrb-arch-title">
+  <title id="mrb-arch-title">An AI agent talks MCP over stdio to server.ts, which asks registry.ts for a named context. Each context lives in one shared Chromium process and has its own cookies, storage and tabs. Both contexts reach the same app under test.</title>
+  <defs>
+    <marker id="mrb-arch-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-arrow"/></marker>
+    <marker id="mrb-arch-admin" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-arrow-admin"/></marker>
+    <marker id="mrb-arch-user" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-arrow-user"/></marker>
+  </defs>
+
+  <!-- Row 1: agent -> server -> registry -->
+  <rect x="20" y="30" width="170" height="80" rx="12" class="d-box-dark"/>
+  <text x="105" y="64" text-anchor="middle" class="d-title d-light">AI agent</text>
+  <text x="105" y="86" text-anchor="middle" class="d-light-sub">Claude Code, Codex, …</text>
+
+  <line x1="194" y1="70" x2="266" y2="70" class="d-edge" marker-start="url(#mrb-arch-a)" marker-end="url(#mrb-arch-a)"/>
+  <text x="230" y="60" text-anchor="middle" class="d-sub">MCP · stdio</text>
+
+  <rect x="270" y="30" width="180" height="80" rx="12" class="d-box-strong"/>
+  <text x="360" y="64" text-anchor="middle" class="d-mono" font-weight="600">mcp/server.ts</text>
+  <text x="360" y="86" text-anchor="middle" class="d-sub">7 tools, each takes an actor</text>
+
+  <line x1="450" y1="70" x2="526" y2="70" class="d-edge" marker-end="url(#mrb-arch-a)"/>
+  <text x="490" y="60" text-anchor="middle" class="d-sub">actor name</text>
+
+  <rect x="530" y="30" width="170" height="80" rx="12" class="d-box-strong"/>
+  <text x="615" y="64" text-anchor="middle" class="d-mono" font-weight="600">browser/registry.ts</text>
+  <text x="615" y="86" text-anchor="middle" class="d-mono">Map&lt;name, context&gt;</text>
+
+  <!-- Row 2: one Chromium, many contexts -->
+  <rect x="120" y="165" width="580" height="200" rx="16" class="d-group"/>
+  <text x="138" y="190" class="d-sub">One Chromium process</text>
+
+  <path d="M590 110 C590 170 300 150 300 206" class="d-edge-admin" marker-end="url(#mrb-arch-admin)"/>
+  <path d="M640 110 C640 160 555 160 555 206" class="d-edge-user" marker-end="url(#mrb-arch-user)"/>
+
+  <rect x="150" y="210" width="250" height="135" rx="12" class="d-admin"/>
+  <text x="170" y="238" class="d-title t-admin">"admin"</text>
+  <text x="380" y="238" text-anchor="end" class="d-sub">BrowserContext</text>
+  <rect x="170" y="256" width="66" height="26" rx="6" class="d-chip"/><text x="203" y="273" text-anchor="middle" class="d-sub">cookies</text>
+  <rect x="244" y="256" width="96" height="26" rx="6" class="d-chip"/><text x="292" y="273" text-anchor="middle" class="d-sub">localStorage</text>
+  <rect x="348" y="256" width="40" height="26" rx="6" class="d-chip"/><text x="368" y="273" text-anchor="middle" class="d-sub">tabs</text>
+  <text x="170" y="320" class="d-label">Signed in as Ada Admin</text>
+
+  <rect x="430" y="210" width="250" height="135" rx="12" class="d-user"/>
+  <text x="450" y="238" class="d-title t-user">"user"</text>
+  <text x="660" y="238" text-anchor="end" class="d-sub">BrowserContext</text>
+  <rect x="450" y="256" width="66" height="26" rx="6" class="d-chip"/><text x="483" y="273" text-anchor="middle" class="d-sub">cookies</text>
+  <rect x="524" y="256" width="96" height="26" rx="6" class="d-chip"/><text x="572" y="273" text-anchor="middle" class="d-sub">localStorage</text>
+  <rect x="628" y="256" width="40" height="26" rx="6" class="d-chip"/><text x="648" y="273" text-anchor="middle" class="d-sub">tabs</text>
+  <text x="450" y="320" class="d-label">Signed in as Uma User</text>
+
+  <!-- Row 3: the app under test -->
+  <line x1="275" y1="345" x2="275" y2="396" class="d-edge-admin" marker-end="url(#mrb-arch-admin)"/>
+  <line x1="555" y1="345" x2="555" y2="396" class="d-edge-user" marker-end="url(#mrb-arch-user)"/>
+  <rect x="150" y="400" width="530" height="44" rx="12" class="d-box"/>
+  <text x="415" y="427" text-anchor="middle" class="d-label"><tspan class="d-mono">BASE_URL</tspan>  ·  the app under test, e.g. http://localhost:3000</text>
+</svg>
